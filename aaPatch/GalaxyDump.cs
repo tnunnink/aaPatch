@@ -25,12 +25,11 @@ public static class GalaxyDump
     public static IEnumerable<ObjectData> Read(string text)
     {
         if (string.IsNullOrWhiteSpace(text))
-            throw new ArgumentException("");
+            throw new ArgumentException("The text parameter cannot be null or empty.", nameof(text));
 
         var segments = text
-            .Split(":TEMPLATE=", StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => ":TEMPLATE=" + s.TrimEnd())
-            .ToArray();
+            .Split(string.Concat(Environment.NewLine, Environment.NewLine), StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => s.Trim());
 
         return segments.SelectMany(ReadTemplate);
 
@@ -92,7 +91,7 @@ public static class GalaxyDump
     public static string Write(IEnumerable<ObjectData> data)
     {
         var groups = data.GroupBy(x => x.Template);
-        var segmens = new List<string>();
+        var segments = new List<string>();
         var lineBreak = Environment.NewLine;
 
         foreach (var group in groups)
@@ -101,9 +100,9 @@ public static class GalaxyDump
             var header = string.Join(",", group.First().Attributes);
             var instances = string.Join(lineBreak, group.Select(x => string.Join(",", x.Values)).ToArray());
             var segment = $"{template}{lineBreak}{header}{lineBreak}{instances}{lineBreak}";
-            segmens.Add(segment);
+            segments.Add(segment);
         }
 
-        return string.Join(Environment.NewLine, segmens);
+        return string.Join(Environment.NewLine, segments);
     }
 }

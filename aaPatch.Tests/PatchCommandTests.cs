@@ -119,4 +119,21 @@ public class PatchCommandTests
             if (File.Exists(outputFile)) File.Delete(outputFile);
         }
     }
+
+    [Test]
+    public async Task ExecuteAsync_TestObjectDump_HasVerifiedOutput()
+    {
+        using var console = new FakeInMemoryConsole();
+        var inputFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Files", "TestObjectDump.csv");
+
+        var command = new PatchCommand
+        {
+            InputFile = inputFile,
+            Patches = ["ShortDesc=This is a patched file"]
+        };
+
+        await command.ExecuteAsync(console);
+
+        await Verify(console.ReadOutputString());
+    }
 }

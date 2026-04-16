@@ -41,6 +41,12 @@
         <None Update="PatchCommandTests.ExecuteAsync_InputAndOutputFileSpecified_HasVerifiedOutput.verified.txt">
           <DependentUpon>PatchCommandTests.cs</DependentUpon>
         </None>
+        <None Update="Files\TestObjectDump.csv">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="PatchCommandTests.ExecuteAsync_TestObjectDump_HasVerifiedOutput.verified.txt">
+          <DependentUpon>PatchCommandTests.cs</DependentUpon>
+        </None>
     </ItemGroup>
 
     <ItemGroup>
