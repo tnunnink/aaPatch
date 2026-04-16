@@ -1,0 +1,7 @@
+﻿:TEMPLATE=$Pump
+:Tagname,Description,HiHi
+P_101,Output to File,100.0
+
+:TEMPLATE=$Valve
+:Tagname,Description,OpenLimit
+V_201,Output to File,True

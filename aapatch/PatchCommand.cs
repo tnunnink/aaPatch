@@ -9,7 +9,8 @@ namespace aaPatch;
 /// Command-line tool for patching Galaxy dump CSV files by modifying object attributes based on filters and patch operations.
 /// Supports filtering objects by template and tag name, and applying attribute modifications through direct assignment or find-replace operations.
 /// </summary>
-[Command(Description = "Patches Galaxy dump CSV files by modifying object attributes based on specified filters and operations.")]
+[Command(Description =
+    "Patches Galaxy dump CSV files by modifying object attributes based on specified filters and operations.")]
 public partial class PatchCommand : ICommand
 {
     /// <summary>
@@ -30,22 +31,22 @@ public partial class PatchCommand : ICommand
     /// Gets the collection of patches to apply to matching objects.
     /// Supports two formats: 'Attribute=Value' for direct assignment, or 'Attribute:Find=Replace' for find-replace operations.
     /// </summary>
-    [CommandOption("attribute", 'a', Description = "Patch to apply in 'Attribute=Value' format or 'Attribute:Find=Replace' format for find-replace operations.")]
-    public IReadOnlyList<string> Patches { get; init; } = [];
+    [CommandOption("attribute", 'a', Description = "Patch to apply in 'Attribute=Value' format or 'Attribute:Find=Replace'.")]
+    public IReadOnlyList<string> Patches { get; set; } = [];
 
     /// <summary>
     /// Gets the template name filter pattern used to select which objects to patch.
     /// Supports wildcard patterns (e.g., $Pump*). If not specified, all templates are matched.
     /// </summary>
     [CommandOption("template", Description = "Template filter (supports wildcards, e.g. $Pump*)")]
-    public string? TemplateFilter { get; init; }
+    public string? TemplateFilter { get; set; }
 
     /// <summary>
     /// Gets the tag name filter pattern used to select which objects to patch.
     /// Supports wildcard patterns. If not specified, all tag names are matched.
     /// </summary>
     [CommandOption("tag", Description = "Tag name filter (supports wildcards)")]
-    public string? TagFilter { get; init; }
+    public string? TagFilter { get; set; }
 
     /// <summary>
     /// Executes the patch command by reading Galaxy dump data, applying filters and patches, and writing the modified output.
@@ -62,14 +63,11 @@ public partial class PatchCommand : ICommand
                 ? await console.Input.ReadToEndAsync()
                 : await File.ReadAllTextAsync(InputFile, cancellation);
 
-            var objects = GalaxyDump.Read(csv)
-                .Where(x => MatchesFilter(x.Template, TemplateFilter) && MatchesFilter(x.TagName, TagFilter))
-                .Select(ApplyPatches)
-                .ToList();
+            var patches = GalaxyDump.Read(csv).Select(ApplyPatches).ToList();
 
             var write = OutputFile is null
-                ? console.Output.WriteAsync(GalaxyDump.Write(objects))
-                : File.WriteAllTextAsync(OutputFile, GalaxyDump.Write(objects), cancellation);
+                ? console.Output.WriteAsync(GalaxyDump.Write(patches))
+                : File.WriteAllTextAsync(OutputFile, GalaxyDump.Write(patches), cancellation);
 
             await write;
         }
@@ -81,13 +79,16 @@ public partial class PatchCommand : ICommand
     }
 
     /// <summary>
-    /// Applies a series of patching operations to the provided ObjectData instance based on the specified attribute-value or attribute-find-replace definitions.
+    /// Applies the specified patches to the target object by modifying its attributes based on direct assignments or find-replace operations.
     /// </summary>
-    /// <param name="target">The object to which the patches will be applied.</param>
-    /// <returns>The updated ObjectData instance with all patches applied.</returns>
-    /// <exception cref="CommandException">Thrown if a patch string is invalid or improperly formatted.</exception>
+    /// <param name="target">The target object to which the patches will be applied.</param>
+    /// <returns>The modified target object with the patches applied.</returns>
+    /// <exception cref="CommandException">Thrown when an invalid patch format is encountered.</exception>
     private ObjectData ApplyPatches(ObjectData target)
     {
+        if (!MatchesFilter(target.Template, TemplateFilter) || !MatchesFilter(target.TagName, TagFilter))
+            return target;
+
         foreach (var patch in Patches)
         {
             if (patch.Contains(':') && patch.IndexOf(':') < patch.IndexOf('='))

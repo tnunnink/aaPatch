@@ -27,12 +27,12 @@ public static class GalaxyDump
         if (string.IsNullOrWhiteSpace(text))
             throw new ArgumentException("");
 
-        var templates = text
-            .Split(string.Concat(Environment.NewLine, Environment.NewLine), StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => s.Trim())
+        var segments = text
+            .Split(":TEMPLATE=", StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => ":TEMPLATE=" + s.TrimEnd())
             .ToArray();
 
-        return templates.SelectMany(ReadTemplate);
+        return segments.SelectMany(ReadTemplate);
 
         IEnumerable<ObjectData> ReadTemplate(string segment)
         {
@@ -63,7 +63,7 @@ public static class GalaxyDump
 
             // Read the template name for this set of object instances and recombine
             // all the records to single string that CsvHelper can easily parse for us.
-            var template = lines[0].Replace(TemplateKey, string.Empty);
+            var template = lines[0][TemplateKey.Length..];
             var instances = string.Join(Environment.NewLine, lines[1..]);
 
             using var sr = new StringReader(instances);
@@ -93,15 +93,17 @@ public static class GalaxyDump
     {
         var groups = data.GroupBy(x => x.Template);
         var segmens = new List<string>();
+        var lineBreak = Environment.NewLine;
 
         foreach (var group in groups)
         {
             var template = $":TEMPLATE={group.Key}";
             var header = string.Join(",", group.First().Attributes);
-            var instances = string.Join(Environment.NewLine, group.Select(x => string.Join(",", x.Values)).ToArray());
-            segmens.Add($"{template}{Environment.NewLine}{header}{Environment.NewLine}{instances}");
+            var instances = string.Join(lineBreak, group.Select(x => string.Join(",", x.Values)).ToArray());
+            var segment = $"{template}{lineBreak}{header}{lineBreak}{instances}{lineBreak}";
+            segmens.Add(segment);
         }
 
-        return string.Join(Environment.NewLine, segmens).Trim();
+        return string.Join(Environment.NewLine, segmens);
     }
 }
