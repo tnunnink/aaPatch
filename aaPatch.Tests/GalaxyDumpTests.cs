@@ -23,13 +23,19 @@ public class GalaxyDumpTests
         Assert.That(result, Has.Count.EqualTo(3));
 
         var p101 = result.First(x => x.TagName == "P_101");
-        Assert.That(p101.Template, Is.EqualTo("$Pump"));
-        Assert.That(p101.GetValue("Description"), Is.EqualTo("Centrifugal Pump"));
-        Assert.That(p101.GetValue("HiHi"), Is.EqualTo("100.0"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(p101.Template, Is.EqualTo("$Pump"));
+            Assert.That(p101.GetValue("Description"), Is.EqualTo("Centrifugal Pump"));
+            Assert.That(p101.GetValue("HiHi"), Is.EqualTo("100.0"));
+        }
 
         var v201 = result.First(x => x.TagName == "V_201");
-        Assert.That(v201.Template, Is.EqualTo("$Valve"));
-        Assert.That(v201.GetValue("OpenLimit"), Is.EqualTo("True"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(v201.Template, Is.EqualTo("$Valve"));
+            Assert.That(v201.GetValue("OpenLimit"), Is.EqualTo("True"));
+        }
     }
 
     [Test]
