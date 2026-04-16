@@ -16,22 +16,16 @@ public static class GalaxyDump
     private const string TemplateKey = ":Template=";
 
     /// <summary>
-    /// Reads and parses object data from a file at the specified path. The file should contain data organized in templates,
-    /// where each template consists of a template identifier, an attribute header line, and one or more data instance rows.
+    /// Reads a text representation of object data organized by templates and converts it into a collection of <see cref="ObjectData"/> instances.
+    /// Each segment of the text must correspond to a template with associated object data structured in a tabular format.
     /// </summary>
-    /// <param name="filePath">The path of the file to be read. Cannot be null, empty, or consist only of whitespace.</param>
-    /// <returns>An enumerable collection of <see cref="ObjectData"/> objects, each representing an instance of data from the file.</returns>
-    /// <exception cref="ArgumentException">
-    /// Thrown when <paramref name="filePath"/> is null, empty, or contains whitespace, or when the file content has an invalid template format.
-    /// The expected format includes a template identifier line, an attribute header line, and at least one data instance row.
-    /// </exception>
-    /// <exception cref="IOException">Thrown when there is an error reading from the specified file.</exception>
-    public static IEnumerable<ObjectData> Read(string filePath)
+    /// <param name="text">The text content to parse, representing template-based object data. Cannot be null, empty, or whitespace.</param>
+    /// <returns>A collection of <see cref="ObjectData"/> extracted from the provided text.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="text"/> is null, empty, or does not follow the expected format.</exception>
+    public static IEnumerable<ObjectData> Read(string text)
     {
-        if (string.IsNullOrWhiteSpace(filePath))
-            throw new ArgumentException("File path cannot be null or whitespace.", nameof(filePath));
-
-        var text = File.ReadAllText(filePath);
+        if (string.IsNullOrWhiteSpace(text))
+            throw new ArgumentException("");
 
         var templates = text
             .Split(string.Concat(Environment.NewLine, Environment.NewLine), StringSplitOptions.RemoveEmptyEntries)
@@ -72,8 +66,8 @@ public static class GalaxyDump
             var template = lines[0].Replace(TemplateKey, string.Empty);
             var instances = string.Join(Environment.NewLine, lines[1..]);
 
-            using var reader = new StringReader(instances);
-            using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
+            using var sr = new StringReader(instances);
+            using var csv = new CsvReader(sr, new CsvConfiguration(CultureInfo.InvariantCulture)
             {
                 Mode = CsvMode.RFC4180,
                 TrimOptions = TrimOptions.Trim
@@ -89,20 +83,14 @@ public static class GalaxyDump
     }
 
     /// <summary>
-    /// Writes the provided collection of object data to a file at the specified path. The data is grouped by template,
-    /// and each group is written as a segment consisting of a template line, a header line (representing attribute names),
-    /// and multiple instance lines (representing attribute values).
+    /// Writes a collection of <see cref="ObjectData"/> instances to a text format based on a template-based structured format.
+    /// Each group of object data is organized by its template, including templates, headers, and instance values.
     /// </summary>
-    /// <param name="filePath">The path of the file where the object data will be written. Cannot be null or empty.</param>
-    /// <param name="data">The collection of object data to write to the file. Cannot be null.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="filePath"/> or <paramref name="data"/> is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="filePath"/> is an empty string.</exception>
-    /// <exception cref="IOException">Thrown when there is an error writing to the file.</exception>
-    public static void Write(string filePath, IEnumerable<ObjectData> data)
+    /// <param name="data">The collection of <see cref="ObjectData"/> to write. Cannot be null.</param>
+    /// <returns>A string representing the serialized object data in a template-based format.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="data"/> is null.</exception>
+    public static string Write(IEnumerable<ObjectData> data)
     {
-        if (string.IsNullOrWhiteSpace(filePath))
-            throw new ArgumentException("File path cannot be null or whitespace.", nameof(filePath));
-
         var groups = data.GroupBy(x => x.Template);
         var segmens = new List<string>();
 
@@ -114,7 +102,6 @@ public static class GalaxyDump
             segmens.Add($"{template}{Environment.NewLine}{header}{Environment.NewLine}{instances}");
         }
 
-        var text = string.Join(Environment.NewLine, segmens).Trim();
-        File.WriteAllText(filePath, text);
+        return string.Join(Environment.NewLine, segmens).Trim();
     }
 }
