@@ -54,15 +54,15 @@ jobs:
         run: |
           # Windows
           dotnet publish aaPatch/aaPatch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=false -o ./dist/win-x64
-          cd dist/win-x64 && zip ../aapatch-win-x64.zip aapatch.exe && cd ../..
+          cd dist/win-x64 && zip ../aaPatch-win-x64.zip aaPatch.exe && cd ../..
           
           # Linux
           dotnet publish aaPatch/aaPatch.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=false -o ./dist/linux-x64
-          cd dist/linux-x64 && tar -czvf ../aapatch-linux-x64.tar.gz aapatch && cd ../..
+          cd dist/linux-x64 && tar -czvf ../aaPatch-linux-x64.tar.gz aaPatch && cd ../..
           
           # macOS (Intel)
           dotnet publish aaPatch/aaPatch.csproj -c Release -r osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=false -o ./dist/osx-x64
-          cd dist/osx-x64 && tar -czvf ../aapatch-osx-x64.tar.gz aapatch && cd ../..
+          cd dist/osx-x64 && tar -czvf ../aaPatch-osx-x64.tar.gz aaPatch && cd ../..
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

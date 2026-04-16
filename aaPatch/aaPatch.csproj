@@ -8,8 +8,8 @@
         <LangVersion>latest</LangVersion>
         <PackAsTool>true</PackAsTool>
         <PackageOutputPath>.nupkg</PackageOutputPath>
-        <ToolCommandName>aapatch</ToolCommandName>
-        <AssemblyName>aapatch</AssemblyName>
+        <ToolCommandName>aaPatch</ToolCommandName>
+        <AssemblyName>aaPatch</AssemblyName>
         <PackageId>aaPatch</PackageId>
         <Version>1.0.0</Version>
         <Authors>Timothy Nunnink</Authors>
