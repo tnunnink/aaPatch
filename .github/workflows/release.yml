@@ -1,0 +1,78 @@
+﻿name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release --verbosity normal
+
+  release:
+    name: Create Release
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Package NuGet
+        run: dotnet pack aaPatch/aaPatch.csproj --configuration Release -o ./dist
+
+      - name: Publish Single-File Executables
+        run: |
+          # Windows
+          dotnet publish aaPatch/aaPatch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=false -o ./dist/win-x64
+          cd dist/win-x64 && zip ../aapatch-win-x64.zip aapatch.exe && cd ../..
+          
+          # Linux
+          dotnet publish aaPatch/aaPatch.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=false -o ./dist/linux-x64
+          cd dist/linux-x64 && tar -czvf ../aapatch-linux-x64.tar.gz aapatch && cd ../..
+          
+          # macOS (Intel)
+          dotnet publish aaPatch/aaPatch.csproj -c Release -r osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=false -o ./dist/osx-x64
+          cd dist/osx-x64 && tar -czvf ../aapatch-osx-x64.tar.gz aapatch && cd ../..
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.nupkg
+            dist/*.zip
+            dist/*.tar.gz
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
