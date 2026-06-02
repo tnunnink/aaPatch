@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using aaPatch.Model;
 using CliFx;
 using CliFx.Binding;
@@ -10,8 +10,7 @@ namespace aaPatch.Commands;
 /// Command-line tool for patching Galaxy dump CSV files by modifying object attributes based on filters and patch operations.
 /// Supports filtering objects by template and tag name and applying attribute modifications through direct assignment or find-replace operations.
 /// </summary>
-[Command(Description =
-    "Patches Galaxy dump CSV files by modifying object attributes based on specified filters and operations.")]
+[Command(Description = "Patches Galaxy CSV exports by modifying object attributes based provided criteria.")]
 public partial class PatchCommand : ICommand
 {
     private const string AdditionInfoMessage = "Use command 'aaPatch info' for format rules.";
@@ -46,7 +45,7 @@ public partial class PatchCommand : ICommand
 
     /// <summary>
     /// Gets the template name filter pattern used to select which objects to patch.
-    /// Supports wildcard patterns (e.g., $Pump*). If not specified, all templates are matched.
+    /// Supports wildcard patterns (e.g., \*). If not specified, all templates are matched.
     /// </summary>
     [CommandOption("templates", 't', Description = $"Templates to apply patch to. {AdditionInfoMessage}")]
     public IReadOnlyList<string> Templates { get; set; } = [];
