@@ -82,17 +82,36 @@ public static class GalaxyDump
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="data"/> is null.</exception>
     public static string Write(IEnumerable<ObjectData> data)
     {
+        ArgumentNullException.ThrowIfNull(data);
+
+        var config = new CsvConfiguration(CultureInfo.InvariantCulture) { Mode = CsvMode.RFC4180 };
+        using var writer = new StringWriter();
+        using var csv = new CsvWriter(writer, config);
+
+        // need to group output by template for system to import correctly
         var groups = data.GroupBy(x => x.Template);
-        var segments = new List<string>();
 
         foreach (var group in groups)
         {
-            var template = $":TEMPLATE={group.Key}{Environment.NewLine}";
-            var header = $"{string.Join(",", group.First().Attributes.Select(a => a.Header))}{Environment.NewLine}";
-            var instances = string.Join(Environment.NewLine, group.Select(x => x.ToString()));
-            segments.Add($"{template}{header}{instances}{Environment.NewLine}");
+            // First line for each group is the template key.
+            writer.WriteLine($":TEMPLATE={group.Key}");
+
+            // Write headers based on the first object. Ideally, all should match...
+            group.First().Attributes.Select(a => a.Header).ToList().ForEach(csv.WriteField);
+            csv.NextRecord();
+
+            // Write row for each instance in the template group.
+            foreach (var instance in group)
+            {
+                foreach (var attribute in instance.Attributes)
+                    csv.WriteField(attribute.ToString());
+
+                csv.NextRecord();
+            }
+
+            writer.WriteLine();
         }
 
-        return string.Join(Environment.NewLine, segments);
+        return writer.ToString().TrimEnd();
     }
 }
