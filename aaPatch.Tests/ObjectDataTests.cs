@@ -50,7 +50,7 @@ public class ObjectDataTests
     public void Indexer_NonExistingAttribute_ReturnsNull()
     {
         var data = new ObjectData(TemplateName, CreateDefaultAttributes());
-        
+
         Assert.That(data["NonExistent"], Is.Null);
     }
 
@@ -130,10 +130,47 @@ public class ObjectDataTests
         data.Update("HiHi", "150.0");
 
         var diffs = data.Diffs().ToList();
+        
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(diffs, Has.Count.EqualTo(2));
+            Assert.That(diffs[0], Is.EqualTo($"{TagName}: 'Description' \"Centrifugal Pump\" -> \"New Pump\""));
+            Assert.That(diffs[1], Is.EqualTo($"{TagName}: 'HiHi' \"100\" -> \"150\""));
+        }
+    }
 
-        Assert.That(diffs, Has.Count.EqualTo(2));
-        Assert.That(diffs[0], Is.EqualTo($"{TagName}: 'Description' \"Centrifugal Pump\" -> \"New Pump\""));
-        Assert.That(diffs[1], Is.EqualTo($"{TagName}: 'HiHi' \"100\" -> \"150\""));
+    [Test]
+    public void Diffs_ReplaceNoMatch_ShouldNotCreateDiffs()
+    {
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        data.Replace("NonExistent", "Replacement");
+
+        var diffs = data.Diffs().ToList();
+
+        Assert.That(diffs, Is.Empty, "Should not have diffs if no values were changed.");
+    }
+
+    [Test]
+    public void Diffs_ReplacePartialMatch_ShouldOnlyDiffChangedAttributes()
+    {
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        data.Replace("Centrifugal", "Positive");
+
+        var diffs = data.Diffs().ToList();
+
+        Assert.That(diffs, Has.Count.EqualTo(1));
+        Assert.That(diffs[0], Does.Contain("'Description'"));
+    }
+
+    [Test]
+    public void Diffs_UpdateSameValue_ShouldNotCreateDiffs()
+    {
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        data.Update("Description", "Centrifugal Pump");
+
+        var diffs = data.Diffs().ToList();
+
+        Assert.That(diffs, Is.Empty, "Should not have diffs if the value is the same.");
     }
 
     [Test]
