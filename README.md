@@ -7,8 +7,10 @@ exports, making it a handy tool for automation engineers working with ArchestrA-
 ## Features
 
 - **Bulk Attribute Updates**: Update object attributes across many objects simultaneously.
-- **Find and Replace**: Perform targeted string replacements within specific attributes or globally across all attributes.
-- **Advanced Filtering**: Target objects by Template name, Tag name, or any attribute value using wildcard patterns (e.g., `*`).
+- **Find and Replace**: Perform targeted string replacements within specific attributes or globally across all
+  attributes.
+- **Advanced Filtering**: Target objects by Template name, Tag name, or any attribute value using wildcard patterns (
+  e.g., `*`).
 - **Preview Mode**: Review exactly what changes will be made before applying them.
 - **Standard Stream Support**: Seamlessly integrates into pipelines using stdin and stdout.
 - **Cross-Platform**: Built on .NET 10, running on Windows, Linux, and macOS.
@@ -33,14 +35,15 @@ aapatch [options]
 
 ### Options
 
-| Option        | Shorthand | Description                                                                                                   |
-|---------------|-----------|---------------------------------------------------------------------------------------------------------------|
-| `--input`     | `-i`      | Path to the input Galaxy dump CSV file. If omitted, reads from stdin.                                         |
-| `--output`    | `-o`      | Path to the output CSV file. If omitted, writes to stdout.                                                    |
-| `--patch`     | `-p`      | Patch to apply. Can be used multiple times.                                                                   |
-| `--filter`    | `-f`      | Filter objects by attribute value or TagName (e.g. `Description=Pump*` or just `P_10*`). Supports wildcards. |
-| `--templates` | `-t`      | Filter objects by template name. Supports wildcards.                                                          |
-| `--preview`   |           | Preview changes on stderr without modifying any data.                                                         |
+| Option         | Shorthand | Description                                                                                                  |
+|----------------|-----------|--------------------------------------------------------------------------------------------------------------|
+| `--input`      | `-i`      | Path to the input Galaxy dump CSV file. If omitted, reads from stdin.                                        |
+| `--output`     | `-o`      | Path to the output CSV file. If omitted, writes to stdout.                                                   |
+| `--patch`      | `-p`      | Patch to apply. Can be used multiple times.                                                                  |
+| `--filter`     | `-f`      | Filter objects by attribute value or TagName (e.g. `Description=Pump*` or just `P_10*`). Supports wildcards. |
+| `--templates`  | `-t`      | Filter objects by template name. Supports wildcards.                                                         |
+| `--preview`    |           | Preview changes on stderr without modifying any data.                                                        |
+| `--match-case` | `-m`      | Perform case-sensitive matching for find-replace operations. Default is case-insensitive.                    |
 
 ### Patch Formats
 
@@ -57,6 +60,17 @@ There are three primary ways to modify attributes:
 3. **Global Find and Replace**: `:Find=Replace`
     - Searches for the `Find` string across **all** attributes of the matching object and replaces it with `Replace`.
     - Example: `-p ":OldSite=NewSite"`
+
+### Case Sensitivity
+
+By default, find and replace operations are **case-insensitive**. This means searching for `pump` will match `Pump`,
+`PUMP`, or `pUmP`.
+
+To perform a case-sensitive match, use the `--match-case` or `-m` flag:
+
+```bash
+aapatch -i Export.csv -p "Description:Pump=Motor" --match-case
+```
 
 ## Examples
 
