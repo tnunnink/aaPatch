@@ -47,6 +47,9 @@
         <None Update="PatchCommandTests.ExecuteAsync_TestObjectDump_HasVerifiedOutput.verified.txt">
           <DependentUpon>PatchCommandTests.cs</DependentUpon>
         </None>
+        <None Update="InfoCommandTests.ExecuteAsync_PrintsInfoText.verified.txt">
+          <DependentUpon>InfoCommandTests.cs</DependentUpon>
+        </None>
     </ItemGroup>
 
     <ItemGroup>
