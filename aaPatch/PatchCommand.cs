@@ -72,7 +72,10 @@ public partial class PatchCommand : ICommand
                 ? await console.Input.ReadToEndAsync()
                 : await File.ReadAllTextAsync(InputFile, cancellation);
 
-            var patches = GalaxyDump.Read(csv).Select(GeneratePatch).ToList();
+            var patches = GalaxyDump.Read(csv)
+                .Where(IsMatch)
+                .Select(GeneratePatch)
+                .ToList();
 
             if (Preview)
             {
@@ -105,9 +108,6 @@ public partial class PatchCommand : ICommand
     /// <exception cref="CommandException">Thrown when an invalid patch format is encountered.</exception>
     private ObjectData GeneratePatch(ObjectData target)
     {
-        if (Templates.Count > 0 && Templates.All(t => !MatchesFilter(target.Template, t)))
-            return target;
-
         foreach (var patch in Patches)
         {
             if (patch.StartsWith(':') && patch.Contains('='))
@@ -143,6 +143,26 @@ public partial class PatchCommand : ICommand
         }
 
         return target;
+    }
+
+    /// <summary>
+    /// Determines whether the specified target object matches the given templates and filters.
+    /// </summary>
+    /// <param name="target">The target object to evaluate against the templates and filters.</param>
+    /// <returns>True if the target object matches the specified criteria; otherwise, false.</returns>
+    private bool IsMatch(ObjectData target)
+    {
+        if (Templates.Count > 0 && Templates.All(t => !MatchesFilter(target.Template, t)))
+            return false;
+
+        if (string.IsNullOrEmpty(Filter))
+            return true;
+
+        var index = Filter.IndexOf('=');
+        var attributeName = index > 0 ? Filter[..index] : "TagName";
+        var pattern = index > 0 ? Filter[(index + 1)..] : Filter;
+        var value = target[attributeName]?.ToString() ?? string.Empty;
+        return MatchesFilter(value, pattern);
     }
 
     /// <summary>
