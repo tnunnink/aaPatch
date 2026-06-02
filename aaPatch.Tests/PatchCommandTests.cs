@@ -235,4 +235,57 @@ public class PatchCommandTests
         Assert.That(error, Does.Contain("P_101: 'Description' \"Centrifugal Pump\" -> \"Updated\""));
         Assert.That(error, Does.Contain("V_201: 'Description' \"Gate Valve\" -> \"Updated\""));
     }
+
+    [Test]
+    public async Task ExecuteAsync_FindReplaceCaseInsensitiveByDefault_PatchesCorrectly()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Patches = ["Description:PUMP=Motor"]
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain("P_101,Centrifugal Motor,100"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_FindReplaceWithMatchCase_DoesNotPatchWhenCasingDiffers()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Patches = ["Description:PUMP=Motor"],
+            MatchCase = true
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain("P_101,Centrifugal Pump,100"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_FindReplaceWithMatchCase_PatchesWhenCasingMatches()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Patches = ["Description:Pump=Motor"],
+            MatchCase = true
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain("P_101,Centrifugal Motor,100"));
+    }
 }

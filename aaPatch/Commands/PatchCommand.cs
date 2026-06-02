@@ -58,6 +58,13 @@ public partial class PatchCommand : ICommand
     public bool Preview { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether to perform case-sensitive matching for find-replace operations.
+    /// Default is false (case-insensitive).
+    /// </summary>
+    [CommandOption("match-case", 'm', Description = "Perform case-sensitive matching for find-replace operations.")]
+    public bool MatchCase { get; set; } = false;
+
+    /// <summary>
     /// Executes the patch command by reading Galaxy dump data, applying filters and patches, and writing the modified output.
     /// </summary>
     /// <param name="console">The console interface for input/output operations and cancellation handling.</param>
@@ -120,7 +127,7 @@ public partial class PatchCommand : ICommand
                 if (parts.Length != 2)
                     throw new CommandException("Invalid global find-replace format. Expected ':Find=Replace'.");
 
-                target.Replace(parts[0], parts[1]);
+                target.Replace(parts[0], parts[1], matchCase: MatchCase);
             }
             else if (patch.Contains(':') && patch.IndexOf(':') < patch.IndexOf('='))
             {
@@ -130,7 +137,7 @@ public partial class PatchCommand : ICommand
                 if (parts.Length != 3)
                     throw new CommandException("Invalid find-replace patch format. Expected 'Attribute:Find=Replace'.");
 
-                target.Replace(parts[1], parts[2], parts[0]);
+                target.Replace(parts[1], parts[2], parts[0], matchCase: MatchCase);
             }
             else
             {

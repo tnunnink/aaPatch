@@ -104,8 +104,11 @@ public class ObjectData
     /// <param name="find">The substring to search for in the attribute values.</param>
     /// <param name="replace">The string to replace the found substring with.</param>
     /// <param name="name">The name of the specific attribute to apply the operation to. If null, the operation is applied to all attributes.</param>
-    public void Replace(string find, string replace, string? name = null)
+    /// <param name="matchCase">True to perform a case-sensitive search; false to perform a case-insensitive search. Default is false.</param>
+    public void Replace(string find, string replace, string? name = null, bool matchCase = false)
     {
+        var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+
         // Apply to all attributes if no name is specified.
         if (name is null)
         {
@@ -113,9 +116,9 @@ public class ObjectData
             {
                 if (attribute.Name == TagNameKey) continue;
                 var value = attribute.Value?.ToString();
-                if (value is not null && value.Contains(find))
+                if (value is not null && value.Contains(find, comparison))
                 {
-                    _patches.Add(attribute.With(value.Replace(find, replace)));
+                    _patches.Add(attribute.With(value.Replace(find, replace, comparison)));
                 }
             }
 
@@ -126,9 +129,9 @@ public class ObjectData
         if (_attributes.TryGetValue(name, out var target) && target.Value is not null)
         {
             var value = target.Value.ToString();
-            if (value is not null && value.Contains(find))
+            if (value is not null && value.Contains(find, comparison))
             {
-                _patches.Add(target.With(value.Replace(find, replace)));
+                _patches.Add(target.With(value.Replace(find, replace, comparison)));
             }
         }
     }

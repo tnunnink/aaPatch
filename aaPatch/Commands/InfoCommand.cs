@@ -31,6 +31,11 @@ public partial class InfoCommand : ICommand
                Example: -p ":Area1=Area2"
                Searches for 'Area1' across ALL attributes and replaces it with 'Area2'.
 
+            Case Sensitivity:
+            -----------------
+            By default, find and replace operations are CASE-INSENSITIVE.
+            Use --match-case or -m to perform case-sensitive matching.
+
             Filters and Templates:
             ----------------------
             Use -f or --filter to select specific objects.

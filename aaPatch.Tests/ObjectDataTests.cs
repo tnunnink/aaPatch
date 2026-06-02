@@ -122,6 +122,39 @@ public class ObjectDataTests
     }
 
     [Test]
+    public void Replace_CaseInsensitiveByDefault_UpdatesValue()
+    {
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+
+        data.Replace("CENTRIFUGAL", "Positive Displacement", "Description");
+        data.ApplyPatches();
+
+        Assert.That(data["Description"], Is.EqualTo("Positive Displacement Pump"));
+    }
+
+    [Test]
+    public void Replace_MatchCase_DoesNotUpdateValueWhenCasingDiffers()
+    {
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+
+        data.Replace("CENTRIFUGAL", "Positive Displacement", "Description", matchCase: true);
+        data.ApplyPatches();
+
+        Assert.That(data["Description"], Is.EqualTo("Centrifugal Pump"));
+    }
+
+    [Test]
+    public void Replace_MatchCase_UpdatesValueWhenCasingMatches()
+    {
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+
+        data.Replace("Centrifugal", "Positive Displacement", "Description", matchCase: true);
+        data.ApplyPatches();
+
+        Assert.That(data["Description"], Is.EqualTo("Positive Displacement Pump"));
+    }
+
+    [Test]
     public void Diffs_ReturnsFormattedStrings()
     {
         var data = new ObjectData(TemplateName, CreateDefaultAttributes());
