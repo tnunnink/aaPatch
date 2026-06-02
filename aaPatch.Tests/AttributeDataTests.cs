@@ -1,4 +1,6 @@
-﻿namespace aaPatch.Tests;
+﻿using aaPatch.Model;
+
+namespace aaPatch.Tests;
 
 [TestFixture]
 public class AttributeDataTests

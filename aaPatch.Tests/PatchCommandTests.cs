@@ -1,4 +1,6 @@
-﻿namespace aaPatch.Tests;
+﻿using aaPatch.Commands;
+
+namespace aaPatch.Tests;
 using CliFx;
 using CliFx.Infrastructure;
 

@@ -1,3 +1,5 @@
+using aaPatch.Model;
+
 namespace aaPatch.Tests;
 
 [TestFixture]

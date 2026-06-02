@@ -2,7 +2,7 @@
 using CsvHelper;
 using CsvHelper.Configuration;
 
-namespace aaPatch;
+namespace aaPatch.Model;
 
 /// <summary>
 /// Provides methods to read and write object data stored in files using a template-based structure.

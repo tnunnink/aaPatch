@@ -1,4 +1,4 @@
-﻿namespace aaPatch;
+﻿namespace aaPatch.Model;
 
 /// <summary>
 /// Represents attribute data consisting of a header, a type, a name, and an associated value.
@@ -135,7 +135,8 @@ public class AttributeData
     /// <returns>An object of the specified type that represents the parsed value. Returns null if the input value is null.</returns>
     private static object? ParseValue(Type type, string? value)
     {
-        if (value is null) return null;
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
 
         return type switch
         {

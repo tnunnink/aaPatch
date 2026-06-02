@@ -1,9 +1,10 @@
 ﻿using System.Text.RegularExpressions;
+using aaPatch.Model;
 using CliFx;
 using CliFx.Binding;
 using CliFx.Infrastructure;
 
-namespace aaPatch;
+namespace aaPatch.Commands;
 
 /// <summary>
 /// Command-line tool for patching Galaxy dump CSV files by modifying object attributes based on filters and patch operations.
