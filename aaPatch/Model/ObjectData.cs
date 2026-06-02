@@ -1,4 +1,4 @@
-﻿namespace aaPatch;
+namespace aaPatch.Model;
 
 /// <summary>
 /// Represents an exported object instance from a galaxy dump file. This record contains the parent template name and
@@ -88,7 +88,13 @@ public class ObjectData
             throw new ArgumentException("Cannot modify the TagName attribute.", nameof(name));
 
         if (_attributes.TryGetValue(name, out var attribute))
-            _patches.Add(attribute.With(value));
+        {
+            var patch = attribute.With(value);
+            if (!Equals(attribute.Value, patch.Value))
+            {
+                _patches.Add(patch);
+            }
+        }
     }
 
     /// <summary>
@@ -106,8 +112,11 @@ public class ObjectData
             foreach (var attribute in _attributes.Values)
             {
                 if (attribute.Name == TagNameKey) continue;
-                var value = attribute.Value?.ToString()?.Replace(find, replace);
-                _patches.Add(attribute.With(value));
+                var value = attribute.Value?.ToString();
+                if (value is not null && value.Contains(find))
+                {
+                    _patches.Add(attribute.With(value.Replace(find, replace)));
+                }
             }
 
             return;
@@ -116,8 +125,11 @@ public class ObjectData
         // Apply to specified attribute name
         if (_attributes.TryGetValue(name, out var target) && target.Value is not null)
         {
-            var value = target.Value.ToString()?.Replace(find, replace);
-            _patches.Add(target.With(value));
+            var value = target.Value.ToString();
+            if (value is not null && value.Contains(find))
+            {
+                _patches.Add(target.With(value.Replace(find, replace)));
+            }
         }
     }
 
