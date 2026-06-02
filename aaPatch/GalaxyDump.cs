@@ -51,13 +51,6 @@ public static class GalaxyDump
                         Expected format is ':TEMPLATE=<name>' followed by a header row with column names.
                         """
                     );
-                case < 3:
-                    throw new ArgumentException(
-                        """
-                        Invalid template format: No object instance data found.
-                        Expected at least one data row following the ':TEMPLATE=<name>' and column header rows.
-                        """
-                    );
             }
 
             // Read the template name for this set of object instances and recombine
@@ -72,12 +65,11 @@ public static class GalaxyDump
                 TrimOptions = TrimOptions.Trim
             });
 
-            // Read all attributes but cast results to dictionary of string values for readability
-            var attributes = csv.GetRecords<dynamic>().Select(r =>
-                ((IDictionary<string, object?>)r).ToDictionary(x => x.Key, x => x.Value?.ToString())
-            );
-
-            return attributes.Select(a => new ObjectData(template, a)).ToArray();
+            // Read and transform all records to object data with corresponding attributes and template name
+            return csv.GetRecords<dynamic>()
+                .Cast<IDictionary<string, object?>>()
+                .Select(x => x.Select(p => new AttributeData(p.Key, p.Value?.ToString())))
+                .Select(a => new ObjectData(template, a)).ToArray();
         }
     }
 
@@ -92,15 +84,13 @@ public static class GalaxyDump
     {
         var groups = data.GroupBy(x => x.Template);
         var segments = new List<string>();
-        var lineBreak = Environment.NewLine;
 
         foreach (var group in groups)
         {
-            var template = $":TEMPLATE={group.Key}";
-            var header = string.Join(",", group.First().Attributes);
-            var instances = string.Join(lineBreak, group.Select(x => string.Join(",", x.Values)).ToArray());
-            var segment = $"{template}{lineBreak}{header}{lineBreak}{instances}{lineBreak}";
-            segments.Add(segment);
+            var template = $":TEMPLATE={group.Key}{Environment.NewLine}";
+            var header = $"{string.Join(",", group.First().Attributes.Select(a => a.Header))}{Environment.NewLine}";
+            var instances = string.Join(Environment.NewLine, group.Select(x => x.ToString()));
+            segments.Add($"{template}{header}{instances}{Environment.NewLine}");
         }
 
         return string.Join(Environment.NewLine, segments);

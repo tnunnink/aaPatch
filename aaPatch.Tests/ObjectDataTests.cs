@@ -6,26 +6,26 @@ public class ObjectDataTests
     private const string TemplateName = "$Pump";
     private const string TagName = "P_101";
 
-    private static Dictionary<string, string?> CreateDefaultAttributes() => new()
-    {
-        { ":Tagname", TagName },
-        { "Description", "Centrifugal Pump" },
-        { "HiHi", "100.0" }
-    };
+    private static List<AttributeData> CreateDefaultAttributes() =>
+    [
+        new(":Tagname", TagName),
+        new("Description", "Centrifugal Pump"),
+        new("HiHi(MxDouble)", "100.0")
+    ];
 
     [Test]
     public void Constructor_ValidInput_InitializesProperties()
     {
         var attributes = CreateDefaultAttributes();
 
-        var obj = new ObjectData(TemplateName, attributes);
+        var data = new ObjectData(TemplateName, attributes);
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(obj.Template, Is.EqualTo(TemplateName));
-            Assert.That(obj.TagName, Is.EqualTo(TagName));
-            Assert.That(obj.Attributes, Has.Member("Description"));
-            Assert.That(obj.Values, Has.Member("Centrifugal Pump"));
+            Assert.That(data.Template, Is.EqualTo(TemplateName));
+            Assert.That(data.TagName, Is.EqualTo(TagName));
+            Assert.That(data.Attributes.Select(a => a.Name), Has.Member("Description"));
+            Assert.That(data.Attributes.Select(a => a.Value), Has.Member("Centrifugal Pump"));
         }
     }
 
@@ -39,119 +39,110 @@ public class ObjectDataTests
     [Test]
     public void TagName_MissingAttribute_ThrowsInvalidOperationException()
     {
-        var attributes = new Dictionary<string, string?> { { "Description", "No Tagname Here" } };
-        var obj = new ObjectData(TemplateName, attributes);
-        Assert.Throws<InvalidOperationException>(() => _ = obj.TagName);
+        var attributes = new List<AttributeData> { new("Description", "No Tagname Here") };
+        var data = new ObjectData(TemplateName, attributes);
+        Assert.Throws<InvalidOperationException>(() => _ = data.TagName);
     }
 
     [Test]
-    public void GetValue_ExistingAttribute_ReturnsValue()
+    public void Indexer_NonExistingAttribute_ReturnsNull()
     {
-        var obj = new ObjectData(TemplateName, CreateDefaultAttributes());
-
-        var value = obj.GetValue("Description");
-
-        Assert.That(value, Is.EqualTo("Centrifugal Pump"));
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        
+        Assert.That(data["NonExistent"], Is.Null);
     }
 
     [Test]
-    public void GetValue_NonExistingAttribute_ThrowsKeyNotFoundException()
+    public void Indexer_ExistingAttribute_ReturnsValue()
     {
-        var obj = new ObjectData(TemplateName, CreateDefaultAttributes());
-
-        Assert.Throws<KeyNotFoundException>(() => obj.GetValue("NonExistent"));
-    }
-
-    [Test]
-    public void TryGetValue_ExistingAttribute_ReturnsTrueAndValue()
-    {
-        var obj = new ObjectData(TemplateName, CreateDefaultAttributes());
-
-        var success = obj.TryGetValue("HiHi", out var value);
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(success, Is.True);
-            Assert.That(value, Is.EqualTo("100.0"));
+            Assert.That(data["Template"], Is.EqualTo(TemplateName));
+            Assert.That(data["TagName"], Is.EqualTo(TagName));
+            Assert.That(data["Description"], Is.EqualTo("Centrifugal Pump"));
+            Assert.That(data["HiHi"], Is.EqualTo(100.0));
+            Assert.That(data["NonExistent"], Is.Null);
         }
     }
 
     [Test]
-    public void TryGetValue_NonExistingAttribute_ReturnsFalse()
+    public void Update_Assignment_UpdatesValue()
     {
-        var obj = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
 
-        var success = obj.TryGetValue("NonExistent", out _);
+        data.Update("HiHi", "120.0");
+        data.ApplyPatches();
 
-        Assert.That(success, Is.False);
+        Assert.That(data["HiHi"], Is.EqualTo(120.0));
     }
 
     [Test]
-    public void Patch_Assignment_UpdatesValue()
+    public void Update_ExistingAttribute_RequiresSaveChanges()
     {
-        var obj = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
 
-        obj.Patch("HiHi", "120.0");
+        data.Update("HiHi", "120.0");
+        data.ApplyPatches();
 
-        Assert.That(obj.GetValue("HiHi"), Is.EqualTo("120.0"));
+        Assert.That(data["HiHi"], Is.EqualTo(120.0));
     }
 
     [Test]
-    public void Patch_NewAttribute_AddsValue()
+    public void Update_NonExistingAttribute_DoesNothing()
     {
-        var obj = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
 
-        obj.Patch("NewAttr", "Value123");
+        data.Update("NewAttr", "Value123");
+        data.ApplyPatches();
 
-        Assert.That(obj.GetValue("NewAttr"), Is.EqualTo("Value123"));
+        Assert.That(data["NewAttr"], Is.Null);
     }
 
     [Test]
-    public void Patch_TagName_ThrowsArgumentException()
+    public void Update_TagName_ThrowsArgumentException()
     {
-        var obj = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
 
-        Assert.Throws<ArgumentException>(() => obj.Patch(":Tagname", "NewTag"));
+        Assert.Throws<ArgumentException>(() => data.Update(":Tagname", "NewTag"));
     }
 
     [Test]
-    public void Patch_FindReplace_UpdatesValue()
+    public void Replace_SpecifiedAttribute_UpdatesValue()
     {
-        var obj = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
 
-        obj.Patch("Description", "Centrifugal", "Positive Displacement");
+        data.Replace("Centrifugal", "Positive Displacement", "Description");
+        data.ApplyPatches();
 
-        Assert.That(obj.GetValue("Description"), Is.EqualTo("Positive Displacement Pump"));
+        Assert.That(data["Description"], Is.EqualTo("Positive Displacement Pump"));
     }
 
     [Test]
-    public void Patch_Func_UpdatesAllValues()
+    public void Diffs_ReturnsFormattedStrings()
     {
-        var obj = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
 
-        obj.Patch((_, val) => val?.ToUpper());
+        data.Update("Description", "New Pump");
+        data.Update("HiHi", "150.0");
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(obj.GetValue("Description"), Is.EqualTo("CENTRIFUGAL PUMP"));
-            Assert.That(obj.TagName, Is.EqualTo("P_101")); // Tagname is also updated if not careful in func
-        }
+        var diffs = data.Diffs().ToList();
+
+        Assert.That(diffs, Has.Count.EqualTo(2));
+        Assert.That(diffs[0], Is.EqualTo($"{TagName}: 'Description' \"Centrifugal Pump\" -> \"New Pump\""));
+        Assert.That(diffs[1], Is.EqualTo($"{TagName}: 'HiHi' \"100\" -> \"150\""));
     }
 
     [Test]
-    public void Patch_FuncWithPredicate_UpdatesSelectedValues()
+    public void ApplyPatches_ClearsPatches()
     {
-        var obj = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
 
-        obj.Patch(
-            (_, _) => "99.9",
-            (key, _) => key == "HiHi"
-        );
+        data.Update("Description", "New Pump");
+        Assert.That(data.Diffs(), Is.Not.Empty);
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(obj.GetValue("HiHi"), Is.EqualTo("99.9"));
-            Assert.That(obj.GetValue("Description"), Is.EqualTo("Centrifugal Pump"));
-        }
+        data.ApplyPatches();
+        Assert.That(data.Diffs(), Is.Empty);
     }
 }

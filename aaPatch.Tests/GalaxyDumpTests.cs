@@ -26,15 +26,15 @@ public class GalaxyDumpTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(p101.Template, Is.EqualTo("$Pump"));
-            Assert.That(p101.GetValue("Description"), Is.EqualTo("Centrifugal Pump"));
-            Assert.That(p101.GetValue("HiHi"), Is.EqualTo("100.0"));
+            Assert.That(p101["Description"], Is.EqualTo("Centrifugal Pump"));
+            Assert.That(p101["HiHi"], Is.EqualTo("100.0"));
         }
 
         var v201 = result.First(x => x.TagName == "V_201");
         using (Assert.EnterMultipleScope())
         {
             Assert.That(v201.Template, Is.EqualTo("$Valve"));
-            Assert.That(v201.GetValue("OpenLimit"), Is.EqualTo("True"));
+            Assert.That(v201["OpenLimit"], Is.EqualTo("True"));
         }
     }
 
@@ -43,15 +43,15 @@ public class GalaxyDumpTests
     {
         var objects = new List<ObjectData>
         {
-            new("$Pump", new Dictionary<string, string?>
+            new("$Pump", new List<AttributeData>
             {
-                { ":Tagname", "P_101" },
-                { "Description", "Pump 1" }
+                new(":Tagname", "P_101"),
+                new("Description", "Pump 1")
             }),
-            new("$Valve", new Dictionary<string, string?>
+            new("$Valve", new List<AttributeData>
             {
-                { ":Tagname", "V_101" },
-                { "Description", "Valve 1" }
+                new(":Tagname", "V_101"),
+                new("Description", "Valve 1")
             })
         };
 

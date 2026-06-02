@@ -15,19 +15,26 @@ public class ObjectData
     /// <summary>
     /// Stores the key-value pairs of attributes associated with this object data instance.
     /// </summary>
-    private readonly IDictionary<string, string?> _attributes;
+    private readonly Dictionary<string, AttributeData> _attributes;
+
+    /// <summary>
+    /// Stores a collection of key/value pairs that represent modified attributes or patches
+    /// applied to the object data. This dictionary is used to track changes or overrides
+    /// to the original attributes of the object.
+    /// </summary>
+    private readonly List<AttributeData> _patches = [];
 
     /// <summary>
     /// Represents an exported object instance from a galaxy dump file. This record contains the parent template name and
     /// tag name reference, along with the dynamic collection of attribute key/value pairs.
     /// </summary>
-    public ObjectData(string template, IDictionary<string, string?> attributes)
+    public ObjectData(string template, IEnumerable<AttributeData> attributes)
     {
         if (string.IsNullOrWhiteSpace(template))
             throw new ArgumentException("Template name is required for object data.");
 
         Template = template;
-        _attributes = attributes;
+        _attributes = attributes.ToDictionary(a => a.Name);
     }
 
     /// <summary>
@@ -41,127 +48,123 @@ public class ObjectData
     public string TagName => GetTagName();
 
     /// <summary>
-    /// Provides a collection of attribute keys associated with the object data instance.
-    /// This property returns an array of strings, representing the keys of all attributes
-    /// stored within the object data.
+    /// Provides access to the collection of attribute key/value pairs associated with the object instance.
+    /// This collection represents dynamic data extracted or modified within the context of the object.
     /// </summary>
-    public string[] Attributes => _attributes.Keys.ToArray();
+    public AttributeData[] Attributes => _attributes.Values.ToArray();
 
     /// <summary>
-    /// Provides an array containing all values of the key-value pairs stored
-    /// as attributes in the object data instance.
+    /// Provides an indexer for accessing object data attributes by name. The indexer allows retrieval of the
+    /// value associated with a specific attribute, including special cases for "Template" and "TagName".
     /// </summary>
-    public string?[] Values => _attributes.Values.ToArray();
-
-    /// <summary>
-    /// Retrieves the value associated with the specified attribute in this object data instance.
-    /// </summary>
-    /// <param name="attribute">The name of the attribute to retrieve. Cannot be null or whitespace.</param>
-    /// <returns>The value of the specified attribute.</returns>
-    /// <exception cref="ArgumentException">Thrown when the attribute name is null, empty, or whitespace.</exception>
-    public string? GetValue(string attribute)
+    /// <param name="name">The name of the attribute to retrieve. Use "Template" or "TagName" to access their corresponding values,
+    /// or the name of a specific object attribute.</param>
+    /// <returns>The value of the requested attribute if it exists, or null if the attribute is not defined.</returns>
+    public object? this[string name]
     {
-        if (string.IsNullOrWhiteSpace(attribute))
-            throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(attribute));
-
-        return _attributes[attribute];
-    }
-
-    /// <summary>
-    /// Attempts to retrieve the value associated with the specified attribute.
-    /// </summary>
-    /// <param name="attribute">The name of the attribute to retrieve. Cannot be null or whitespace.</param>
-    /// <param name="value">
-    /// When this method returns, contains the value associated with the specified attribute if the attribute exists; otherwise, the default value for the <see cref="string"/> type.
-    /// </param>
-    /// <returns><c>true</c> if the attribute exists and a value is retrieved; otherwise, <c>false</c>.</returns>
-    public bool TryGetValue(string attribute, out string value)
-    {
-        if (string.IsNullOrWhiteSpace(attribute))
-            throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(attribute));
-
-        return _attributes.TryGetValue(attribute, out value!);
+        get
+        {
+            return name switch
+            {
+                "Template" => Template,
+                "TagName" => TagName,
+                _ => _attributes.GetValueOrDefault(name)?.Value
+            };
+        }
     }
 
     /// <summary>
     /// Adds or updates an attribute with the specified value for this object data instance.
     /// </summary>
-    /// <param name="attribute">The name of the attribute to patch. Cannot be null, whitespace, or the TagName key.</param>
+    /// <param name="name">The name of the attribute to patch. Cannot be null, whitespace, or the TagName key.</param>
     /// <param name="value">The value to assign to the attribute.</param>
     /// <returns>The current ObjectData instance for method chaining.</returns>
-    public void Patch(string attribute, string value)
+    public void Update(string name, string value)
     {
-        if (string.IsNullOrWhiteSpace(attribute))
-            throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(attribute));
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(name));
 
-        if (attribute == TagNameKey)
-            throw new ArgumentException("Cannot modify the TagName attribute directly.", nameof(attribute));
+        if (name == TagNameKey)
+            throw new ArgumentException("Cannot modify the TagName attribute.", nameof(name));
 
-        if (!_attributes.TryAdd(attribute, value))
-            _attributes[attribute] = value;
+        if (_attributes.TryGetValue(name, out var attribute))
+            _patches.Add(attribute.With(value));
     }
 
     /// <summary>
-    /// 
+    /// Replaces occurrences of a specified substring with a replacement string in the values of the object's attributes.
+    /// The method can target all attributes or a specific attribute based on the provided name.
     /// </summary>
-    /// <param name="attribute"></param>
-    /// <param name="find"></param>
-    /// <param name="replace"></param>
-    /// <returns></returns>
-    public void Patch(string attribute, string find, string replace)
+    /// <param name="find">The substring to search for in the attribute values.</param>
+    /// <param name="replace">The string to replace the found substring with.</param>
+    /// <param name="name">The name of the specific attribute to apply the operation to. If null, the operation is applied to all attributes.</param>
+    public void Replace(string find, string replace, string? name = null)
     {
-        if (string.IsNullOrWhiteSpace(attribute))
-            throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(attribute));
-
-        if (_attributes.TryGetValue(attribute, out var current) && current is not null)
+        // Apply to all attributes if no name is specified.
+        if (name is null)
         {
-            var updated = current.Replace(find, replace);
-            _attributes[attribute] = updated;
+            foreach (var attribute in _attributes.Values)
+            {
+                if (attribute.Name == TagNameKey) continue;
+                var value = attribute.Value?.ToString()?.Replace(find, replace);
+                _patches.Add(attribute.With(value));
+            }
+
+            return;
+        }
+
+        // Apply to specified attribute name
+        if (_attributes.TryGetValue(name, out var target) && target.Value is not null)
+        {
+            var value = target.Value.ToString()?.Replace(find, replace);
+            _patches.Add(target.With(value));
         }
     }
 
     /// <summary>
-    /// Applies a transformation function to each key-value pair in the attribute dictionary of this object data
-    /// instance and updates their values.
+    /// Generates a collection of formatted strings describing the changes (or "diffs") between the
+    /// current attribute values and their patched values for the associated object. This method
+    /// compares the original attributes with the patched values and creates a textual representation
+    /// highlighting the differences.
     /// </summary>
-    /// <param name="update">A delegate that defines the transformation to apply.
-    /// Takes the attribute key and current value as parameters and returns the updated value.</param>
-    /// <returns>The current instance of <see cref="ObjectData"/> with updated attributes.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when the <paramref name="update"/> parameter is null.</exception>
-    public ObjectData Patch(Func<string, string?, string?> update)
+    /// <returns>
+    /// An enumerable collection of strings, where each string represents a diff in the format:
+    /// "TagName: 'AttributeName' "OriginalValue" -> "PatchedValue"".
+    /// </returns>
+    public IEnumerable<string> Diffs()
     {
-        ArgumentNullException.ThrowIfNull(update);
-
-        foreach (var attribute in _attributes)
+        return _patches.Select(p =>
         {
-            var value = update.Invoke(attribute.Key, attribute.Value);
-            _attributes[attribute.Key] = value;
-        }
-
-        return this;
+            var original = _attributes[p.Name];
+            return $"{TagName}: '{original.Name}' \"{original.Value}\" -> \"{p.Value}\"";
+        });
     }
 
     /// <summary>
-    /// Updates the attributes of the current object data instance based on the specified update function and predicate.
-    /// Attributes that match the predicate will be updated with the new value generated by the update function.
+    /// Applies all pending modifications stored in the internal patch collection to the object's attributes.
+    /// Once invoked, the object's attributes are updated to reflect the changes contained in the patches.
+    /// The patch collection is used to temporarily store modifications and is applied to the object's state during this method's execution.
     /// </summary>
-    /// <param name="update">A function that takes an attribute name and its current value and returns the updated value.</param>
-    /// <param name="predicate">A function that takes an attribute name and its current value and determines whether the attribute should be updated.</param>
-    /// <returns>The updated instance of the current object data.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when the update function or predicate is null.</exception>
-    public ObjectData Patch(Func<string, string?, string> update, Func<string, string?, bool> predicate)
+    public void ApplyPatches()
     {
-        ArgumentNullException.ThrowIfNull(update);
-        ArgumentNullException.ThrowIfNull(predicate);
-
-        foreach (var attribute in _attributes)
+        foreach (var patch in _patches)
         {
-            if (!predicate.Invoke(attribute.Key, attribute.Value)) continue;
-            var value = update.Invoke(attribute.Key, attribute.Value);
-            _attributes[attribute.Key] = value;
+            _attributes[patch.Name] = patch;
         }
 
-        return this;
+        _patches.Clear();
+    }
+
+    /// <summary>
+    /// Returns a string representation of the object data by concatenating the values
+    /// of all attributes, separated by commas.
+    /// </summary>
+    /// <returns>
+    /// A comma-separated string that represents the values of the object's attributes.
+    /// </returns>
+    public override string ToString()
+    {
+        return string.Join(",", _attributes.Values.Select(a => a.ToString()));
     }
 
     /// <summary>
@@ -176,11 +179,13 @@ public class ObjectData
     /// </exception>
     private string GetTagName()
     {
-        if (!_attributes.TryGetValue(TagNameKey, out var tagName) || string.IsNullOrWhiteSpace(tagName))
-        {
-            throw new InvalidOperationException(
-                $"Required attribute {TagNameKey} does not exist or has an invalid value.");
-        }
+        if (!_attributes.TryGetValue(TagNameKey, out var attribute))
+            throw new InvalidOperationException($"Required attribute {TagNameKey} does not exist.");
+
+        var tagName = attribute.Value?.ToString();
+
+        if (string.IsNullOrEmpty(tagName))
+            throw new InvalidOperationException($"Required attribute {TagNameKey} has invalid null or empty value.");
 
         return tagName;
     }

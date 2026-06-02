@@ -25,7 +25,7 @@ public class PatchCommandTests
         var command = new PatchCommand
         {
             Patches = ["Description=Updated Pump"],
-            TemplateFilter = "$Pump"
+            Templates = ["$Pump"]
         };
 
         await command.ExecuteAsync(console);
@@ -59,7 +59,7 @@ public class PatchCommandTests
         {
             InputFile = inputFile,
             Patches = ["Description=File Updated"],
-            TemplateFilter = "$Pump"
+            Templates = ["$Pump"]
         };
 
         await command.ExecuteAsync(console);
@@ -135,5 +135,27 @@ public class PatchCommandTests
         await command.ExecuteAsync(console);
 
         await Verify(console.ReadOutputString());
+    }
+
+    [Test]
+    public async Task ExecuteAsync_PreviewMode_LogsToErrorStream()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Patches = ["Description=Updated"],
+            Preview = true
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        var error = console.ReadErrorString();
+
+        Assert.That(output, Is.Empty);
+        Assert.That(error, Does.Contain("P_101: 'Description' \"Centrifugal Pump\" -> \"Updated\""));
+        Assert.That(error, Does.Contain("V_201: 'Description' \"Gate Valve\" -> \"Updated\""));
     }
 }

@@ -11,7 +11,7 @@
         <ToolCommandName>aaPatch</ToolCommandName>
         <AssemblyName>aaPatch</AssemblyName>
         <PackageId>aaPatch</PackageId>
-        <Version>1.0.3</Version>
+        <Version>1.0.4</Version>
         <Authors>Timothy Nunnink</Authors>
         <Description>A command-line tool for patching and modifying AVEVA System Platform Galaxy dump files. Enables bulk attribute updates, find-replace operations, and automated modifications across multiple objects in Galaxy exports.</Description>
         <PackageProjectUrl>https://github.com/tnunnink/aaPatch</PackageProjectUrl>
@@ -29,6 +29,7 @@
     <ItemGroup>
         <PackageReference Include="CliFx" Version="3.0.0"/>
         <PackageReference Include="CsvHelper" Version="33.1.0"/>
+        <PackageReference Include="Spectre.Console" Version="0.55.1" />
     </ItemGroup>
 
 </Project>
