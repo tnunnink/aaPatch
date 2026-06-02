@@ -72,7 +72,9 @@ public partial class PatchCommand : ICommand
                 ? await console.Input.ReadToEndAsync()
                 : await File.ReadAllTextAsync(InputFile, cancellation);
 
-            var patches = GalaxyDump.Read(csv)
+            var objects = GalaxyDump.Read(csv).ToList();
+
+            var patches = objects
                 .Where(IsMatch)
                 .Select(GeneratePatch)
                 .ToList();
@@ -89,8 +91,8 @@ public partial class PatchCommand : ICommand
             patches.ForEach(p => p.ApplyPatches());
 
             var write = OutputFile is null
-                ? console.Output.WriteAsync(GalaxyDump.Write(patches))
-                : File.WriteAllTextAsync(OutputFile, GalaxyDump.Write(patches), cancellation);
+                ? console.Output.WriteAsync(GalaxyDump.Write(objects))
+                : File.WriteAllTextAsync(OutputFile, GalaxyDump.Write(objects), cancellation);
 
             await write;
         }
