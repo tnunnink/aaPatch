@@ -429,4 +429,65 @@ public class PatchCommandTests
         Assert.That(output, Does.Contain(":Tagname,HiHi"));
         Assert.That(output, Does.Not.Contain("Description"));
     }
+
+    [Test]
+    public async Task ExecuteAsync_DefaultFormat_IsAveva()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand();
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain(":TEMPLATE=$Pump"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_AvevaFormat_HasVerifiedOutput()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Format = "aveva"
+        };
+
+        await command.ExecuteAsync(console);
+
+        await Verify(console.ReadOutputString());
+    }
+
+    [Test]
+    public async Task ExecuteAsync_JsonFormat_HasVerifiedOutput()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Format = "json"
+        };
+
+        await command.ExecuteAsync(console);
+
+        await Verify(console.ReadOutputString());
+    }
+
+    [Test]
+    public void ExecuteAsync_InvalidFormat_ThrowsCommandException()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Format = "invalid"
+        };
+
+        var ex = Assert.ThrowsAsync<CommandException>(async () => await command.ExecuteAsync(console));
+        Assert.That(ex.Message, Does.Contain("Unsupported output format 'invalid'"));
+    }
 }

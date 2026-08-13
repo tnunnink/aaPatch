@@ -1,0 +1,14 @@
+﻿[
+  {
+    "Template": "$Pump",
+    "TagName": "P_101",
+    "Description": "Centrifugal Pump",
+    "HiHi": "100.0"
+  },
+  {
+    "Template": "$Valve",
+    "TagName": "V_201",
+    "Description": "Gate Valve",
+    "OpenLimit": "True"
+  }
+]
