@@ -28,7 +28,7 @@ public class PatchCommandTests
         var command = new PatchCommand
         {
             Patches = ["Description=Updated Pump"],
-            Filter = ":template=$Pump"
+            Filter = "template=$Pump"
         };
 
         await command.ExecuteAsync(console);
@@ -62,7 +62,7 @@ public class PatchCommandTests
         {
             InputFile = inputFile,
             Patches = ["Description=File Updated"],
-            Filter = ":Template=$Pump"
+            Filter = "Template=$Pump"
         };
 
         await command.ExecuteAsync(console);

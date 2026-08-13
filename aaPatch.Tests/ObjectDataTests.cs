@@ -5,13 +5,10 @@ namespace aaPatch.Tests;
 [TestFixture]
 public class ObjectDataTests
 {
-    private const string Template = "$Pump";
-    private const string TagName = "P_101";
-
     private static List<AttributeData> CreateDefaultAttributes() =>
     [
-        new(":TEMPLATE", Template),
-        new(":Tagname", TagName),
+        new("Template", "$Pump"),
+        new("TagName", "P_101"),
         new("Description", "Centrifugal Pump"),
         new("HiHi(MxDouble)", "100.0")
     ];
@@ -25,8 +22,8 @@ public class ObjectDataTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(data.Template, Is.EqualTo(Template));
-            Assert.That(data.TagName, Is.EqualTo(TagName));
+            Assert.That(data.Template, Is.EqualTo("$Pump"));
+            Assert.That(data.TagName, Is.EqualTo("P_101"));
             Assert.That(data.Attributes.Select(a => a.Name), Has.Member("Description"));
             Assert.That(data.Attributes.Select(a => a.Value), Has.Member("Centrifugal Pump"));
         }
@@ -67,8 +64,8 @@ public class ObjectDataTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(data["Template"], Is.EqualTo(Template));
-            Assert.That(data["TagName"], Is.EqualTo(TagName));
+            Assert.That(data["Template"], Is.EqualTo("$Pump"));
+            Assert.That(data["TagName"], Is.EqualTo("P_101"));
             Assert.That(data["Description"], Is.EqualTo("Centrifugal Pump"));
             Assert.That(data["HiHi"], Is.EqualTo(100.0));
             Assert.That(data["NonExistent"], Is.Null);
@@ -91,17 +88,6 @@ public class ObjectDataTests
         var data = new ObjectData(CreateDefaultAttributes());
 
         Assert.Throws<ArgumentException>(() => data.Update("NewAttr", "Value123"));
-    }
-
-    [Test]
-    public void Update_IdentityFields_ThrowsArgumentException()
-    {
-        var data = new ObjectData(CreateDefaultAttributes());
-
-        Assert.Throws<ArgumentException>(() => data.Update("Template", "New"));
-        Assert.Throws<ArgumentException>(() => data.Update(":template", "New"));
-        Assert.Throws<ArgumentException>(() => data.Update("TagName", "New"));
-        Assert.Throws<ArgumentException>(() => data.Update(":tagname", "New"));
     }
 
     [Test]
@@ -168,8 +154,8 @@ public class ObjectDataTests
     {
         var attributes = new List<AttributeData>
         {
-            new(":template", "$Pump"),
-            new(":tagname", "P_101"),
+            new("Template", "$Pump"),
+            new("TagName", "P_101"),
             new("Attr1", "Match1"),
             new("Attr2", "Match2")
         };
@@ -177,66 +163,52 @@ public class ObjectDataTests
 
         Assert.DoesNotThrow(() => obj.Replace("Match", "Replaced"));
 
-        Assert.That(obj["Attr1"], Is.EqualTo("Replaced1"));
-        Assert.That(obj["Attr2"], Is.EqualTo("Replaced2"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(obj["Attr1"], Is.EqualTo("Replaced1"));
+            Assert.That(obj["Attr2"], Is.EqualTo("Replaced2"));
+        }
     }
 
     [Test]
-    public void Replace_Global_PreservesIdentityFields()
+    public void Replace_Global_UpdatedAllFieldsIncludingIdentity()
     {
-        var attributes = new List<AttributeData>
+        var data = new ObjectData(new List<AttributeData>
         {
-            new(":template", "$Pump"),
-            new(":tagname", "P_101"),
+            new("Template", "$Pump"),
+            new("TagName", "P_101"),
             new("Attr1", "Pump_P_101")
-        };
-        var obj = new ObjectData(attributes);
+        });
 
-        obj.Replace("Pump", "Motor");
-        obj.Replace("P_101", "P_999");
+        data.Replace("Pump", "Motor");
+        data.Replace("P_101", "P_999");
 
-        Assert.That(obj.Template, Is.EqualTo("$Pump"));
-        Assert.That(obj.TagName, Is.EqualTo("P_101"));
-        Assert.That(obj["Attr1"], Is.EqualTo("Motor_P_999"));
-    }
-
-    [Test]
-    public void Replace_IdentityFields_ThrowsArgumentException()
-    {
-        var attributes = new List<AttributeData>
+        using (Assert.EnterMultipleScope())
         {
-            new(":template", "$Pump"),
-            new(":tagname", "P_101"),
-        };
-        var obj = new ObjectData(attributes);
-
-        Assert.Throws<ArgumentException>(() => obj.Replace("Pump", "Motor", "Template"));
-        Assert.Throws<ArgumentException>(() => obj.Replace("Pump", "Motor", ":template"));
-        Assert.Throws<ArgumentException>(() => obj.Replace("P_101", "P_999", "TagName"));
-        Assert.Throws<ArgumentException>(() => obj.Replace("P_101", "P_999", ":tagname"));
+            Assert.That(data.Template, Is.EqualTo("$Motor"));
+            Assert.That(data.TagName, Is.EqualTo("P_999"));
+            Assert.That(data["Attr1"], Is.EqualTo("Motor_P_999"));
+        }
     }
 
     [Test]
     public void Indexer_IdentityLookup_IsCaseInsensitive()
     {
-        var attributes = new List<AttributeData>
+        var data = new ObjectData(new List<AttributeData>
         {
-            new(":template", "$Pump"),
-            new(":tagname", "P_101"),
-        };
-        var obj = new ObjectData(attributes);
+            new("Template", "$Pump"),
+            new("TagName", "P_101"),
+        });
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(obj["Template"], Is.EqualTo("$Pump"));
-            Assert.That(obj["template"], Is.EqualTo("$Pump"));
-            Assert.That(obj["TEMPLATE"], Is.EqualTo("$Pump"));
-            Assert.That(obj[":template"], Is.EqualTo("$Pump"));
+            Assert.That(data["Template"], Is.EqualTo("$Pump"));
+            Assert.That(data["template"], Is.EqualTo("$Pump"));
+            Assert.That(data["TEMPLATE"], Is.EqualTo("$Pump"));
 
-            Assert.That(obj["TagName"], Is.EqualTo("P_101"));
-            Assert.That(obj["tagname"], Is.EqualTo("P_101"));
-            Assert.That(obj["TAGNAME"], Is.EqualTo("P_101"));
-            Assert.That(obj[":tagname"], Is.EqualTo("P_101"));
+            Assert.That(data["TagName"], Is.EqualTo("P_101"));
+            Assert.That(data["tagname"], Is.EqualTo("P_101"));
+            Assert.That(data["TAGNAME"], Is.EqualTo("P_101"));
         }
     }
 }

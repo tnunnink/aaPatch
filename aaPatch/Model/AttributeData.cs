@@ -12,6 +12,16 @@
 public class AttributeData
 {
     /// <summary>
+    /// Represents the default template name used for comparison in attribute name validation.
+    /// </summary>
+    private const string Template = "Template";
+
+    /// <summary>
+    /// Represents the default template name used for comparison in attribute name validation.
+    /// </summary>
+    private const string TagName = "TagName";
+
+    /// <summary>
     /// Stores the optional raw string value associated with the attribute.
     /// </summary>
     /// <remarks>
@@ -88,14 +98,28 @@ public class AttributeData
     public object? Value => ParseValue();
 
     /// <summary>
-    /// Indicates whether the attribute represents the special/virtual template name attribute.
+    /// Indicates whether the attribute name is considered special based on predefined criteria.
     /// </summary>
     /// <remarks>
-    /// This property evaluates whether the name of the attribute is equivalent to ":template",
-    /// using a case-insensitive ordinal string comparison. It is a read-only property
-    /// determined based on the parsed attribute name.
+    /// An attribute is deemed special if its name matches specific default values
+    /// such as "Template" or "TagName", using a case-insensitive string comparison.
     /// </remarks>
-    public bool IsTemplate => StringComparer.OrdinalIgnoreCase.Equals(Name, ":template");
+    public bool IsIdentity =>
+        StringComparer.OrdinalIgnoreCase.Equals(Name, Template) ||
+        StringComparer.OrdinalIgnoreCase.Equals(Name, TagName);
+
+    /// <summary>
+    /// Creates a new <see cref="AttributeData"/> instance with the specified name while preserving the current value.
+    /// </summary>
+    /// <param name="name">The new name to set for the attribute. Cannot be null or empty.</param>
+    /// <returns>A new <see cref="AttributeData"/> instance with the updated name and the existing value.</returns>
+    /// <exception cref="ArgumentException">Thrown when the provided name parameter is null or empty.</exception>
+    public AttributeData Rename(string name)
+    {
+        var current = ParseName();
+        var header = Header.Replace(current, name);
+        return new AttributeData(header, _value);
+    }
 
     /// <summary>
     /// Updates the value of the current <see cref="AttributeData"/> instance with the specified string value.

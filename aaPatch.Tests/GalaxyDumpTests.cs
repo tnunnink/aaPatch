@@ -47,14 +47,14 @@ public class GalaxyDumpTests
         {
             new(new List<AttributeData>
             {
-                new(":Template", "$Pump"),
-                new(":Tagname", "P_101"),
+                new("Template", "$Pump"),
+                new("TagName", "P_101"),
                 new("Description", "Pump 1")
             }),
             new(new List<AttributeData>
             {
-                new(":Template", "$Valve"),
-                new(":Tagname", "V_101"),
+                new("Template", "$Valve"),
+                new("TagName", "V_101"),
                 new("Description", "Valve 1")
             })
         };

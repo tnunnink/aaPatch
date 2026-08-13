@@ -9,18 +9,6 @@ namespace aaPatch.Model;
 public class ObjectData
 {
     /// <summary>
-    /// Defines a constant key used to identify the parent template name associated with the object data.
-    /// This key is used internally to access or validate the template name within the attribute collection.
-    /// </summary>
-    private const string TemplateKey = ":template";
-
-    /// <summary>
-    /// Defines a constant key used to identify the attribute associated with the tag name in the object data.
-    /// This key is used internally to access or verify the tag name attribute within the attribute collection.
-    /// </summary>
-    private const string TagNameKey = ":tagname";
-
-    /// <summary>
     /// Stores the key-value pairs of attributes associated with this object data instance.
     /// </summary>
     private readonly Dictionary<string, AttributeData> _attributes;
@@ -37,12 +25,12 @@ public class ObjectData
     /// <summary>
     /// Gets the template string associated with this instance of the data.
     /// </summary>
-    public string Template => GetRequiredValue(TemplateKey);
+    public string Template => GetRequiredValue(nameof(Template));
 
     /// <summary>
     /// Gets the tag name identifier for this object data instance.
     /// </summary>
-    public string TagName => GetRequiredValue(TagNameKey);
+    public string TagName => GetRequiredValue(nameof(TagName));
 
     /// <summary>
     /// Provides access to the collection of attribute key/value pairs associated with the object instance.
@@ -57,14 +45,7 @@ public class ObjectData
     /// <param name="name">The name of the attribute to retrieve. Use "Template" or "TagName" to access their corresponding values,
     /// or the name of a specific object attribute.</param>
     /// <returns>The value of the requested attribute if it exists, or null if the attribute is not defined.</returns>
-    public object? this[string name]
-    {
-        get
-        {
-            name = NormalizeName(name);
-            return _attributes.GetValueOrDefault(name)?.Value;
-        }
-    }
+    public object? this[string name] => _attributes.GetValueOrDefault(name)?.Value;
 
     /// <summary>
     /// Determines whether the object matches the specified filter condition.
@@ -81,13 +62,13 @@ public class ObjectData
     /// Returns true if the object's attributes or tag name match the specified filter
     /// condition; otherwise, false.
     /// </returns>
-    public bool IsMatch(string? filter)
+    public bool Matches(string? filter)
     {
         if (string.IsNullOrEmpty(filter))
             return true;
 
         var index = filter.IndexOf('=');
-        var attributeName = index > 0 ? filter[..index] : TagNameKey;
+        var attributeName = index > 0 ? filter[..index] : nameof(TagName);
         var pattern = index > 0 ? filter[(index + 1)..] : filter;
         var value = this[attributeName]?.ToString() ?? string.Empty;
         return MatchesFilter(value, pattern);
@@ -101,6 +82,53 @@ public class ObjectData
     }
 
     /// <summary>
+    /// Projects a subset of attributes from the current object based on the provided selection criteria.
+    /// Creates a new instance of <see cref="ObjectData"/> that includes only the attributes specified
+    /// in the selections, with optional renaming of attributes if aliasing is provided in the selection string.
+    /// </summary>
+    /// <param name="selections">
+    /// A collection of strings representing attribute names to include in the projection. Each string can optionally
+    /// take the form "Name=Alias", where "Name" is the original attribute name and "Alias" is the desired name in the projection.
+    /// </param>
+    /// <returns>
+    /// A new <see cref="ObjectData"/> instance containing the specified subset of attributes, with any aliases applied as specified.
+    /// </returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when a specified attribute name is null, empty, or whitespace, or if the attribute does not exist in the current object.
+    /// </exception>
+    public ObjectData Project(IEnumerable<string> selections)
+    {
+        var attributes = new Dictionary<string, AttributeData>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var selection in selections)
+        {
+            if (string.IsNullOrWhiteSpace(selection))
+                throw new ArgumentException("Selection string cannot be null, empty, or whitespace.",
+                    nameof(selections));
+
+            var index = selection.IndexOf('=');
+            var name = index > 0 ? selection[..index] : selection;
+            var alias = index > 0 ? selection[(index + 1)..] : string.Empty;
+
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(name));
+
+            if (!_attributes.TryGetValue(name, out var attribute))
+                throw new ArgumentException($"Attribute '{name}' does not exist in the object.", nameof(name));
+
+            attribute = string.IsNullOrWhiteSpace(alias) ? attribute : attribute.Rename(alias);
+
+            if (!attributes.TryAdd(attribute.Name, attribute))
+                throw new ArgumentException(
+                    $"Duplicate attribute name '{attribute.Name}' in projection. Attribute names must be unique after aliasing.",
+                    nameof(selections));
+        }
+
+
+        return new ObjectData(attributes.Values);
+    }
+
+    /// <summary>
     /// Adds or updates an attribute with the specified value for this object data instance.
     /// </summary>
     /// <param name="name">The name of the attribute to patch. Cannot be null, whitespace, or the TagName key.</param>
@@ -108,13 +136,8 @@ public class ObjectData
     /// <returns>The current ObjectData instance for method chaining.</returns>
     public void Update(string name, string value)
     {
-        name = NormalizeName(name);
-
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(name));
-
-        if (IsIdentity(name))
-            throw new ArgumentException($"Cannot modify the identity attribute '{name}'.", nameof(name));
 
         if (!_attributes.TryGetValue(name, out var attribute))
             throw new ArgumentException($"Attribute '{name}' does not exist in the object.", nameof(name));
@@ -132,7 +155,6 @@ public class ObjectData
     /// <param name="matchCase">True to perform a case-sensitive search; false to perform a case-insensitive search. Default is false.</param>
     public void Replace(string find, string replace, string? name = null, bool matchCase = false)
     {
-        name = NormalizeName(name);
         var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
         // Apply to all attributes if no name is specified.
@@ -140,7 +162,6 @@ public class ObjectData
         {
             foreach (var attribute in _attributes.Values.ToArray())
             {
-                if (IsIdentity(attribute.Name)) continue;
                 var value = attribute.Value?.ToString();
                 if (value is null || !value.Contains(find, comparison)) continue;
                 _attributes[attribute.Name] = attribute.With(value.Replace(find, replace, comparison));
@@ -148,9 +169,6 @@ public class ObjectData
 
             return;
         }
-
-        if (IsIdentity(name))
-            throw new ArgumentException($"Cannot modify the identity attribute '{name}'.", nameof(name));
 
         if (!_attributes.TryGetValue(name, out var target))
             throw new ArgumentException($"Attribute '{name}' does not exist in the object.", nameof(name));
@@ -192,35 +210,5 @@ public class ObjectData
             throw new InvalidOperationException($"Required attribute {key} has an invalid null or empty value.");
 
         return result;
-    }
-
-    /// <summary>
-    /// Determines whether a given attribute name corresponds to an identity attribute in the object data.
-    /// Identity attributes are predefined key values essential to the object's identity, such as
-    /// the template or tag name.
-    /// </summary>
-    /// <param name="name">The name of the attribute to evaluate.</param>
-    /// <returns>
-    /// True if the attribute name corresponds to an identity attribute; otherwise, false.
-    /// </returns>
-    private static bool IsIdentity(string name)
-    {
-        return string.Equals(name, TemplateKey, StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(name, TagNameKey, StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Normalizes the provided attribute name to ensure consistency. Translates specific
-    /// attribute names like "Template" or "TagName" into their standardized internal keys.
-    /// </summary>
-    /// <param name="name">The attribute name to be normalized.</param>
-    /// <returns>The normalized attribute name. If "Template" or "TagName" is provided,
-    /// their respective internal keys are returned; otherwise, the original name is
-    /// returned unchanged.</returns>
-    private static string NormalizeName(string? name)
-    {
-        if (string.Equals(name, "Template", StringComparison.OrdinalIgnoreCase)) return TemplateKey;
-        if (string.Equals(name, "TagName", StringComparison.OrdinalIgnoreCase)) return TagNameKey;
-        return name ?? string.Empty;
     }
 }

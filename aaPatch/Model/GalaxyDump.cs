@@ -13,7 +13,13 @@ public static class GalaxyDump
     /// Represents a constant key used to identify the template attribute in the object data.
     /// This key is used internally for accessing or verifying the template string associated with the object.
     /// </summary>
-    private const string TemplateKey = ":TEMPLATE";
+    private const string TemplateKey = ":TEMPLATE=";
+
+    /// <summary>
+    /// Represents a constant key used to identify the tag name attribute in the object data.
+    /// This key is used internally for accessing or verifying the tag name string associated with an object.
+    /// </summary>
+    private const string TagNameKey = ":Tagname";
 
     /// <summary>
     /// Reads a text representation of object data organized by templates and converts it into a collection of <see cref="ObjectData"/> instances.
@@ -27,18 +33,16 @@ public static class GalaxyDump
         if (string.IsNullOrWhiteSpace(text))
             throw new ArgumentException("The text parameter cannot be null or empty.", nameof(text));
 
-        var segments = text
-            .Split(["\r\n\r\n", "\n\n"], StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => s.Trim());
-
-        return segments.SelectMany(ReadTemplate);
+        return text.Split(TemplateKey, StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => s.Trim())
+            .SelectMany(ReadTemplate);
 
         IEnumerable<ObjectData> ReadTemplate(string segment)
         {
-            // Skip any segment that does not have our template key at the start.
-            if (!segment.StartsWith(TemplateKey, StringComparison.OrdinalIgnoreCase))
+            // Skip anything that doesn't start with the template name character (typically the first metadata line the CSV)
+            if (!segment.StartsWith('$'))
                 yield break;
-
+            
             // We know that each segment needs at least 3 lines (template identifier, attribute header, and instance(s) row)
             var lines = segment.Split(["\r\n", "\n"], StringSplitOptions.None);
 
@@ -55,11 +59,11 @@ public static class GalaxyDump
 
             // Read the template name for this set of object instances and recombine
             // all the records to single string that CsvHelper can easily parse for us.
-            var template = lines[0][(TemplateKey.Length + 1)..];
+            var template = lines[0];
             var instances = string.Join(Environment.NewLine, lines[1..]);
 
-            using var sr = new StringReader(instances);
-            using var csv = new CsvReader(sr, new CsvConfiguration(CultureInfo.InvariantCulture)
+            using var reader = new StringReader(instances);
+            using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
             {
                 Mode = CsvMode.RFC4180,
                 TrimOptions = TrimOptions.Trim
@@ -69,10 +73,24 @@ public static class GalaxyDump
 
             foreach (var record in records)
             {
-                // inject the template name as a special attribute back into the attribute data for the object instance
-                record[TemplateKey] = template;
-                var attributes = record.Select(x => new AttributeData(x.Key, x.Value?.ToString()));
-                yield return new ObjectData(attributes);
+                // Manually inject normalized template and tag name attributes into the object data.
+                // This way we don't have to use special colon syntax to reference these values.
+                // The write method will restructure the output according to AVEVA format.
+                var attributes = new Dictionary<string, AttributeData>
+                {
+                    ["Template"] = new("Template", template),
+                    ["TagName"] = new("TagName", record[TagNameKey]?.ToString())
+                };
+
+                foreach (var item in record)
+                {
+                    if (StringComparer.OrdinalIgnoreCase.Equals(item.Key, TagNameKey))
+                        continue;
+
+                    attributes[item.Key] = new AttributeData(item.Key, item.Value?.ToString());
+                }
+
+                yield return new ObjectData(attributes.Values);
             }
         }
     }
@@ -98,20 +116,23 @@ public static class GalaxyDump
         foreach (var group in groups)
         {
             // First line for each group is the template key.
-            writer.WriteLine($"{TemplateKey}={group.Key}");
+            writer.WriteLine($"{TemplateKey}{group.Key}");
 
-            // Write headers based on the first object. Ideally, all should match...
-            group.First().Attributes.Where(a => !a.IsTemplate).Select(a => a.Header).ToList().ForEach(csv.WriteField);
+            // Write the leading tag name key for each instance.
+            csv.WriteField(TagNameKey);
+
+            // Write remaining headers based on the first object.
+            group.First().Attributes.Where(a => !a.IsIdentity).Select(a => a.Header).ToList().ForEach(csv.WriteField);
             csv.NextRecord();
 
             // Write row for each instance in the template group.
             foreach (var instance in group)
             {
-                foreach (var attribute in instance.Attributes)
-                {
-                    if (attribute.IsTemplate) continue;
+                //Explicitly write the tag name as the first attribute
+                csv.WriteField(instance.TagName);
+
+                foreach (var attribute in instance.Attributes.Where(a => !a.IsIdentity))
                     csv.WriteField(attribute.ToString());
-                }
 
                 csv.NextRecord();
             }

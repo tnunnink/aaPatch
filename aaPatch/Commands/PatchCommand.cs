@@ -68,7 +68,7 @@ public partial class PatchCommand : ICommand
             var objects = GalaxyDump.Read(csv).ToList();
 
             var patches = objects
-                .Where(x => x.IsMatch(Filter))
+                .Where(x => x.Matches(Filter))
                 .Select(GeneratePatch)
                 .ToList();
 
