@@ -59,6 +59,14 @@ public partial class PatchCommand : ICommand
     public bool MatchCase { get; set; }
 
     /// <summary>
+    /// Gets or sets the output format for the patched Galaxy CSV export.
+    /// Supported options are "aveva" for AVEVA format and "json" for JSON format.
+    /// Defaults to "aveva" if not specified.
+    /// </summary>
+    [CommandOption("format", Description = "Output format: aveva or json.")]
+    public string Format { get; set; } = "aveva";
+
+    /// <summary>
     /// Executes the patch command by reading Galaxy dump data, filtering the output objects, applying patches, and writing the result.
     /// </summary>
     /// <param name="console">The console interface for input/output operations and cancellation handling.</param>
@@ -81,9 +89,11 @@ public partial class PatchCommand : ICommand
                 .Select(x => Selections.Count > 0 ? x.Project(Selections) : x)
                 .ToList();
 
+            var output = patches.Serialize(Format);
+
             var write = OutputFile is null
-                ? console.Output.WriteAsync(GalaxyDump.Write(patches))
-                : File.WriteAllTextAsync(OutputFile, GalaxyDump.Write(patches), cancellation);
+                ? console.Output.WriteAsync(output)
+                : File.WriteAllTextAsync(OutputFile, output, cancellation);
 
             await write;
         }

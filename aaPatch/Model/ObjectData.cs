@@ -1,4 +1,6 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using CliFx;
 
 namespace aaPatch.Model;
 
@@ -210,5 +212,45 @@ public class ObjectData
             throw new InvalidOperationException($"Required attribute {key} has an invalid null or empty value.");
 
         return result;
+    }
+}
+
+/// <summary>
+/// Provides extension methods for the ObjectData class, enabling additional functionalities such as serialization
+/// of ObjectData instances into various formats.
+/// </summary>
+public static class ObjectDataExtensions
+{
+    /// <summary>
+    /// Defines the JSON serialization options used for customizing the behavior of JSON output,
+    /// such as enabling indented formatting for better readability of the serialized data.
+    /// </summary>
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
+    /// <summary>
+    /// Serializes a collection of ObjectData instances into a specified output format.
+    /// Supported formats are "aveva" and "json".
+    /// </summary>
+    /// <param name="data">The collection of ObjectData instances to serialize.</param>
+    /// <param name="format">The output format for serialization. Supported values are "aveva" and "json".</param>
+    /// <returns>The serialized string representation of the ObjectData collection.</returns>
+    /// <exception cref="CommandException">Thrown when an unsupported output format is specified.</exception>
+    public static string Serialize(this IEnumerable<ObjectData> data, string format)
+    {
+        return format switch
+        {
+            "aveva" => GalaxyDump.Write(data),
+            "json" => WriteJson(data),
+            _ => throw new CommandException($"Unsupported output format '{format}'.")
+        };
+
+        string WriteJson(IEnumerable<ObjectData> d)
+        {
+            var dictionary = d.Select(x =>
+                x.Attributes.ToDictionary(a => a.Name, a => a.Value, StringComparer.OrdinalIgnoreCase)
+            );
+
+            return JsonSerializer.Serialize(dictionary, JsonOptions);
+        }
     }
 }

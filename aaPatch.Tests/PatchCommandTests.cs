@@ -323,4 +323,110 @@ public class PatchCommandTests
         var output = console.ReadOutputString();
         Assert.That(output, Is.Empty);
     }
+
+    [Test]
+    public async Task ExecuteAsync_WithSelections_IncludesOnlySelectedAttributes()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Selections = ["Template", "TagName", "Description"]
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain(":TEMPLATE=$Pump"));
+        Assert.That(output, Does.Contain(":Tagname,Description"));
+        Assert.That(output, Does.Not.Contain("HiHi"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WithAliasedSelections_RenamesAttributes()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Selections = ["Template", "TagName", "Description=ShortDesc"]
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain(":Tagname,ShortDesc"));
+        Assert.That(output, Does.Not.Contain(",Description"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WithEmptySelections_IncludesAllAttributes()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Selections = []
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain(":Tagname,Description,HiHi"));
+    }
+
+    [Test]
+    public void ExecuteAsync_InvalidSelection_ThrowsCommandException()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Selections = ["NonExistent"]
+        };
+
+        var ex = Assert.ThrowsAsync<CommandException>(async () => await command.ExecuteAsync(console));
+        Assert.That(ex.Message, Does.Contain("Attribute 'NonExistent' does not exist"));
+    }
+
+    [Test]
+    public void ExecuteAsync_WithoutIdentitySelections_ThrowsCommandException()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Selections = ["Description"]
+        };
+
+        var ex = Assert.ThrowsAsync<CommandException>(async () => await command.ExecuteAsync(console));
+        Assert.That(ex.Message, Does.Contain("Required attribute Template does not exist")
+            .Or.Contain("Required attribute TagName does not exist"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_FilterAndSelections_WorksTogether()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Filter = "Template=$Pump",
+            Selections = ["Template", "TagName", "HiHi"]
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain(":TEMPLATE=$Pump"));
+        Assert.That(output, Does.Not.Contain(":TEMPLATE=$Valve"));
+        Assert.That(output, Does.Contain(":Tagname,HiHi"));
+        Assert.That(output, Does.Not.Contain("Description"));
+    }
 }
