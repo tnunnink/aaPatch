@@ -83,25 +83,11 @@ aapatch -i Export.csv -p "Description:Pump=Motor" --match-case
 
 ### Static Output Fields
 
-The `--add` or `-a` option appends new static fields to every object that passes the filter. This is useful for
-transforming data for other systems like Ignition.
+The `--add` or `-a` option appends new static fields to every object that passes the filter.
 
 | Type              | Syntax            | Description                                               | Example               |
 |:------------------|:------------------|:----------------------------------------------------------|:----------------------|
 | **Static Adding** | `Attribute=Value` | Adds a new attribute with the given value to each object. | `-a "source=AVEVA"` |
-
-Added fields are available for selection and aliasing. Primitive types are preserved in JSON output:
-
-| CLI Value       | JSON Type |
-|:----------------|:----------|
-| `true`/`false`  | Boolean   |
-| integer         | Number    |
-| decimal         | Number    |
-| `null`          | Null      |
-| `"123"`         | String    |
-| other           | String    |
-
-*Note: `--add` currently supports JSON output only. Duplicates and collisions with existing fields are rejected.*
 
 ### Selection and Aliases
 
