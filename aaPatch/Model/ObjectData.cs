@@ -426,14 +426,21 @@ public static class ObjectDataExtensions
         return format.Trim().ToLowerInvariant() switch
         {
             "aveva" => GalaxyDump.Write(data),
-            "json" => WriteJson(data),
+            "json" => WriteJson([.. data]),
             _ => throw new ArgumentException($"Unsupported output format '{format}'.")
         };
 
-        string WriteJson(IEnumerable<ObjectData> d)
+        string WriteJson(ICollection<ObjectData> d)
         {
+            var duplicate = d.SelectMany(a => a.GroupBy(x => x.Name)).FirstOrDefault(g => g.Count() > 1);
+
+            if (duplicate is not null)
+                throw new InvalidOperationException(
+                    $"Cannot serialize to JSON: Attribute '{duplicate.Key}' appears multiple times in an object. " +
+                    "JSON format requires unique attribute names. Use --select with aliases to rename duplicate attributes.");
+
             var dictionary = d.Select(x => x.ToDictionary(
-                a => a.Header,
+                a => a.Name,
                 a => a.Value,
                 StringComparer.OrdinalIgnoreCase)
             );
