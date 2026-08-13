@@ -267,4 +267,60 @@ public class PatchCommandTests
         var output = console.ReadOutputString();
         Assert.That(output, Does.Contain("P_101,Centrifugal Motor,100"));
     }
+
+    [Test]
+    public async Task ExecuteAsync_TemplateFilter_EmitsMatchingObjects()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Filter = "Template=$Pump"
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain(":TEMPLATE=$Pump"));
+        Assert.That(output, Does.Contain("P_101"));
+        Assert.That(output, Does.Not.Contain(":TEMPLATE=$Valve"));
+        Assert.That(output, Does.Not.Contain("V_201"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_FilterOnly_EmitsMatchingObjects()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Filter = "P_101"
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain("P_101"));
+        Assert.That(output, Does.Not.Contain("P_102"));
+        Assert.That(output, Does.Not.Contain("V_201"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_FilterNoMatches_ProducesEmptyOutput()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Filter = "NonExistent"
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Is.Empty);
+    }
 }
