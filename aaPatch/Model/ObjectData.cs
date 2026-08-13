@@ -98,6 +98,7 @@ public class ObjectData
     /// </exception>
     public ObjectData Project(IEnumerable<string> selections)
     {
+        ArgumentNullException.ThrowIfNull(selections);
         var attributes = new Dictionary<string, AttributeData>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var selection in selections)
@@ -123,7 +124,7 @@ public class ObjectData
                     $"Duplicate attribute name '{attribute.Name}' in projection. Attribute names must be unique after aliasing.",
                     nameof(selections));
         }
-        
+
         return new ObjectData(attributes.Values);
     }
 

@@ -9,7 +9,8 @@ exports, making it a handy tool for automation engineers working with ArchestrA-
 - **Bulk Attribute Updates**: Update object attributes across many objects simultaneously.
 - **Find and Replace**: Perform targeted string replacements within specific attributes or globally across all
   attributes.
-- **Advanced Filtering**: Select which objects are included in the output by Template name, Tag name, or any attribute value using wildcard patterns (e.g., `*`).
+- **Advanced Filtering**: Select which objects are included in the output by Template name, Tag name, or any attribute
+  value using wildcard patterns (e.g., `*`).
 - **Standard Stream Support**: Seamlessly integrates into pipelines using stdin and stdout.
 - **Cross-Platform**: Built on .NET 10, running on Windows, Linux, and macOS.
 
@@ -33,13 +34,13 @@ aapatch [options]
 
 ### Options
 
-| Option         | Shorthand | Description                                                                                                  |
-|----------------|-----------|--------------------------------------------------------------------------------------------------------------|
-| `--input`      | `-i`      | Path to the input Galaxy dump CSV file. If omitted, reads from stdin.                                        |
-| `--output`     | `-o`      | Path to the output CSV file. If omitted, writes to stdout.                                                   |
-| `--patch`      | `-p`      | Patch to apply. Can be used multiple times.                                                                  |
+| Option         | Shorthand | Description                                                                                                                       |
+|----------------|-----------|-----------------------------------------------------------------------------------------------------------------------------------|
+| `--input`      | `-i`      | Path to the input Galaxy dump CSV file. If omitted, reads from stdin.                                                             |
+| `--output`     | `-o`      | Path to the output CSV file. If omitted, writes to stdout.                                                                        |
 | `--filter`     | `-f`      | Filter which objects are included in the output (e.g. `Template=$Pump`, `Description=Pump*` or just `P_10*`). Supports wildcards. |
-| `--match-case` | `-m`      | Perform case-sensitive matching for find-replace operations. Default is case-insensitive.                    |
+| `--patch`      | `-p`      | Patch to apply. Can be used multiple times.                                                                                       |
+| `--match-case` | `-m`      | Perform case-sensitive matching for find-replace operations. Default is case-insensitive.                                         |
 
 ### Patch Formats
 

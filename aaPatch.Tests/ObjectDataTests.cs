@@ -211,4 +211,129 @@ public class ObjectDataTests
             Assert.That(data["TAGNAME"], Is.EqualTo("P_101"));
         }
     }
+
+    [Test]
+    public void Project_SingleAttribute_ReturnsObjectWithSelectedAttribute()
+    {
+        var data = new ObjectData(CreateDefaultAttributes());
+
+        var projected = data.Project(["TagName"]);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(projected.Attributes, Has.Length.EqualTo(1));
+            Assert.That(projected.TagName, Is.EqualTo("P_101"));
+        }
+    }
+
+    [Test]
+    public void Project_MultipleAttributes_ReturnsObjectWithSelectedAttributes()
+    {
+        var data = new ObjectData(CreateDefaultAttributes());
+
+        var projected = data.Project(["Template", "TagName"]);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(projected.Attributes, Has.Length.EqualTo(2));
+            Assert.That(projected.Template, Is.EqualTo("$Pump"));
+            Assert.That(projected.TagName, Is.EqualTo("P_101"));
+        }
+    }
+
+    [Test]
+    public void Project_AliasedAttribute_ReturnsObjectWithRenamedAttribute()
+    {
+        var data = new ObjectData(CreateDefaultAttributes());
+
+        var projected = data.Project(["Description=Desc"]);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(projected.Attributes, Has.Length.EqualTo(1));
+            Assert.That(projected["Desc"], Is.EqualTo("Centrifugal Pump"));
+            Assert.That(projected["Description"], Is.Null);
+        }
+    }
+
+    [Test]
+    public void Project_MixedSelection_ReturnsObjectWithBothTypes()
+    {
+        var data = new ObjectData(CreateDefaultAttributes());
+
+        var projected = data.Project(["TagName", "Description=Desc"]);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(projected.Attributes, Has.Length.EqualTo(2));
+            Assert.That(projected.TagName, Is.EqualTo("P_101"));
+            Assert.That(projected["Desc"], Is.EqualTo("Centrifugal Pump"));
+        }
+    }
+
+    [Test]
+    public void Project_CaseInsensitiveSelection_MatchesExistingAttribute()
+    {
+        var data = new ObjectData(CreateDefaultAttributes());
+
+        var projected = data.Project(["tagname", "DESCRIPTION=Desc"]);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(projected.Attributes, Has.Length.EqualTo(2));
+            Assert.That(projected.TagName, Is.EqualTo("P_101"));
+            Assert.That(projected["Desc"], Is.EqualTo("Centrifugal Pump"));
+        }
+    }
+
+    [Test]
+    public void Project_PreservationOfValues_MaintainsAttributeValues()
+    {
+        var data = new ObjectData(CreateDefaultAttributes());
+
+        var projected = data.Project(["HiHi"]);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(projected["HiHi"], Is.EqualTo(100.0));
+            Assert.That(projected.Attributes[0].Type, Is.EqualTo(typeof(double)));
+        }
+    }
+
+    [Test]
+    public void Project_NonExistentAttribute_ThrowsArgumentException()
+    {
+        var data = new ObjectData(CreateDefaultAttributes());
+
+        Assert.Throws<ArgumentException>(() => data.Project(["NonExistent"]));
+    }
+
+    [Test]
+    public void Project_DuplicateAlias_ThrowsArgumentException()
+    {
+        var data = new ObjectData(CreateDefaultAttributes());
+
+        Assert.Throws<ArgumentException>(() => data.Project(["TagName=Same", "Template=Same"]));
+    }
+
+    [Test]
+    public void Project_InvalidSelectionStrings_ThrowsArgumentException()
+    {
+        var data = new ObjectData(CreateDefaultAttributes());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.Throws<ArgumentException>(() => data.Project([""]));
+            Assert.Throws<ArgumentException>(() => data.Project(["   "]));
+            Assert.Throws<ArgumentException>(() => data.Project([null!]));
+        }
+    }
+
+    [Test]
+    public void Project_EmptyOriginalName_ThrowsArgumentException()
+    {
+        var data = new ObjectData(CreateDefaultAttributes());
+
+        Assert.Throws<ArgumentException>(() => data.Project(["=Alias"]));
+    }
 }
