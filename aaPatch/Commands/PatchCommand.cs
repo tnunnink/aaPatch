@@ -93,7 +93,7 @@ public partial class PatchCommand : ICommand
 
             var outputs = objects
                 .Where(x => x.Matches(Filter))
-                .Select(GeneratePatch)
+                .Select(x => x.Apply(Patches, MatchCase))
                 .Select(x => x.Add([.. Additions]))
                 .Select(x => Selections.Count > 0 ? x.Project(Selections) : x)
                 .ToList();
@@ -110,50 +110,5 @@ public partial class PatchCommand : ICommand
         {
             throw new CommandException($"Patch failed with error '{e.Message}'", innerException: e);
         }
-    }
-
-    /// <summary>
-    /// Applies the specified patches to the target object by modifying its attributes based on direct assignments or find-replace operations.
-    /// </summary>
-    /// <param name="target">The target object to which the patches will be applied.</param>
-    /// <returns>The modified target object with the patches applied.</returns>
-    /// <exception cref="CommandException">Thrown when an invalid patch format is encountered.</exception>
-    private ObjectData GeneratePatch(ObjectData target)
-    {
-        foreach (var patch in Patches)
-        {
-            if (patch.StartsWith(':') && patch.Contains('='))
-            {
-                // Global Find and Replace Mode -> ":Find=Replace"
-                var parts = patch[1..].Split('=', 2);
-
-                if (parts.Length != 2)
-                    throw new CommandException("Invalid global find-replace format. Expected ':Find=Replace'.");
-
-                target.Replace(parts[0], parts[1], matchCase: MatchCase);
-            }
-            else if (patch.Contains(':') && patch.IndexOf(':') < patch.IndexOf('='))
-            {
-                // Attribute-specific Find and Replace Mode -> "Attribute:Find=Replace"
-                var parts = patch.Split([':', '='], 3);
-
-                if (parts.Length != 3)
-                    throw new CommandException("Invalid find-replace patch format. Expected 'Attribute:Find=Replace'.");
-
-                target.Replace(parts[1], parts[2], parts[0], matchCase: MatchCase);
-            }
-            else
-            {
-                // Direct Assignment Mode -> "Attribute=Value"
-                var parts = patch.Split('=', 2);
-
-                if (parts.Length != 2)
-                    throw new CommandException("Invalid patch format. Expected 'Attribute=Value'.");
-
-                target.Update(parts[0], parts[1]);
-            }
-        }
-
-        return target;
     }
 }

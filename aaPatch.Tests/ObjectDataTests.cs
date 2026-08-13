@@ -24,8 +24,8 @@ public class ObjectDataTests
         {
             Assert.That(data.Template, Is.EqualTo("$Pump"));
             Assert.That(data.TagName, Is.EqualTo("P_101"));
-            Assert.That(data.Attributes.Select(a => a.Name), Has.Member("Description"));
-            Assert.That(data.Attributes.Select(a => a.Value), Has.Member("Centrifugal Pump"));
+            Assert.That(data.Select(a => a.Name), Has.Member("Description"));
+            Assert.That(data.Select(a => a.Value), Has.Member("Centrifugal Pump"));
         }
     }
 
@@ -50,11 +50,11 @@ public class ObjectDataTests
     }
 
     [Test]
-    public void Indexer_NonExistingAttribute_ReturnsNull()
+    public void Indexer_NonExistingAttribute_ThrowsException()
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        Assert.That(data["NonExistent"], Is.Null);
+        Assert.Throws<ArgumentException>(() => _ = data["NonExistent"]);
     }
 
     [Test]
@@ -68,110 +68,105 @@ public class ObjectDataTests
             Assert.That(data["TagName"], Is.EqualTo("P_101"));
             Assert.That(data["Description"], Is.EqualTo("Centrifugal Pump"));
             Assert.That(data["HiHi"], Is.EqualTo(100.0));
-            Assert.That(data["NonExistent"], Is.Null);
         }
     }
 
     [Test]
-    public void Update_Assignment_UpdatesValue()
+    public void Apply_Assignment_UpdatesValue()
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        data.Update("HiHi", "120.0");
+        data.Apply("HiHi=120.0");
 
         Assert.That(data["HiHi"], Is.EqualTo(120.0));
     }
 
     [Test]
-    public void Update_NonExistingAttribute_ThrowsArgumentException()
+    public void Apply_NonExistingAttribute_ThrowsArgumentException()
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        Assert.Throws<ArgumentException>(() => data.Update("NewAttr", "Value123"));
+        Assert.Throws<ArgumentException>(() => data.Apply("NewAttr=Value123"));
     }
 
     [Test]
-    public void Replace_SpecifiedAttribute_UpdatesValue()
+    public void Apply_SpecifiedAttribute_UpdatesValue()
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        data.Replace("Centrifugal", "Positive Displacement", "Description");
+        data.Apply("Description:Centrifugal=Positive Displacement");
 
         Assert.That(data["Description"], Is.EqualTo("Positive Displacement Pump"));
     }
 
     [Test]
-    public void Replace_CaseInsensitiveByDefault_UpdatesValue()
+    public void Apply_CaseInsensitiveByDefault_UpdatesValue()
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        data.Replace("CENTRIFUGAL", "Positive Displacement", "Description");
+        data.Apply("Description:CENTRIFUGAL=Positive Displacement");
 
         Assert.That(data["Description"], Is.EqualTo("Positive Displacement Pump"));
     }
 
     [Test]
-    public void Replace_MatchCase_DoesNotUpdateValueWhenCasingDiffers()
+    public void Apply_MatchCase_DoesNotUpdateValueWhenCasingDiffers()
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        data.Replace("CENTRIFUGAL", "Positive Displacement", "Description", matchCase: true);
+        data.Apply("Description:CENTRIFUGAL=Positive Displacement", matchCase: true);
 
         Assert.That(data["Description"], Is.EqualTo("Centrifugal Pump"));
     }
 
     [Test]
-    public void Replace_MatchCase_UpdatesValueWhenCasingMatches()
+    public void Apply_MatchCase_UpdatesValueWhenCasingMatches()
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        data.Replace("Centrifugal", "Positive Displacement", "Description", matchCase: true);
+        data.Apply("Description:Centrifugal=Positive Displacement", matchCase: true);
 
         Assert.That(data["Description"], Is.EqualTo("Positive Displacement Pump"));
     }
 
     [Test]
-    public void Update_Sequential_SeesPreviousResults()
+    public void Apply_Sequential_SeesPreviousResults()
     {
-        var attributes = new List<AttributeData>
+        var data = new ObjectData(new List<AttributeData>
         {
-            new(":template", "$Pump"),
-            new(":tagname", "P_101"),
+            new("Template", "$Pump"),
+            new("TagName", "P_101"),
             new("Attr1", "Value1")
-        };
-        var obj = new ObjectData(attributes);
+        });
 
-        // Patch 1: Value1 -> Value2
-        obj.Update("Attr1", "Value2");
-        // Patch 2: Value2 -> Value3
-        obj.Update("Attr1", "Value3");
+        data.Apply("Attr1=Value2");
+        data.Apply("Attr1=Value3");
 
-        Assert.That(obj["Attr1"], Is.EqualTo("Value3"));
+        Assert.That(data["Attr1"], Is.EqualTo("Value3"));
     }
 
     [Test]
-    public void Replace_Global_ModifiesMultipleFieldsWithoutThrowing()
+    public void Apply_Global_ModifiesMultipleFieldsWithoutThrowing()
     {
-        var attributes = new List<AttributeData>
+        var data = new ObjectData(new List<AttributeData>
         {
             new("Template", "$Pump"),
             new("TagName", "P_101"),
             new("Attr1", "Match1"),
             new("Attr2", "Match2")
-        };
-        var obj = new ObjectData(attributes);
+        });
 
-        Assert.DoesNotThrow(() => obj.Replace("Match", "Replaced"));
+        Assert.DoesNotThrow(() => data.Apply(":Match=Replaced"));
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(obj["Attr1"], Is.EqualTo("Replaced1"));
-            Assert.That(obj["Attr2"], Is.EqualTo("Replaced2"));
+            Assert.That(data["Attr1"], Is.EqualTo("Replaced1"));
+            Assert.That(data["Attr2"], Is.EqualTo("Replaced2"));
         }
     }
 
     [Test]
-    public void Replace_Global_UpdatedAllFieldsIncludingIdentity()
+    public void Apply_Global_UpdatedAllFieldsIncludingIdentity()
     {
         var data = new ObjectData(new List<AttributeData>
         {
@@ -180,8 +175,8 @@ public class ObjectDataTests
             new("Attr1", "Pump_P_101")
         });
 
-        data.Replace("Pump", "Motor");
-        data.Replace("P_101", "P_999");
+        data.Apply(":Pump=Motor");
+        data.Apply(":P_101=P_999");
 
         using (Assert.EnterMultipleScope())
         {
@@ -221,7 +216,7 @@ public class ObjectDataTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(projected.Attributes, Has.Length.EqualTo(1));
+            Assert.That(projected, Has.Count.EqualTo(1));
             Assert.That(projected.TagName, Is.EqualTo("P_101"));
         }
     }
@@ -235,7 +230,7 @@ public class ObjectDataTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(projected.Attributes, Has.Length.EqualTo(2));
+            Assert.That(projected, Has.Count.EqualTo(2));
             Assert.That(projected.Template, Is.EqualTo("$Pump"));
             Assert.That(projected.TagName, Is.EqualTo("P_101"));
         }
@@ -250,9 +245,9 @@ public class ObjectDataTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(projected.Attributes, Has.Length.EqualTo(1));
+            Assert.That(projected, Has.Count.EqualTo(1));
             Assert.That(projected["Desc"], Is.EqualTo("Centrifugal Pump"));
-            Assert.That(projected["Description"], Is.Null);
+            Assert.Throws<ArgumentException>(() => _ = projected["Description"]);
         }
     }
 
@@ -265,7 +260,7 @@ public class ObjectDataTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(projected.Attributes, Has.Length.EqualTo(2));
+            Assert.That(projected, Has.Count.EqualTo(2));
             Assert.That(projected.TagName, Is.EqualTo("P_101"));
             Assert.That(projected["Desc"], Is.EqualTo("Centrifugal Pump"));
         }
@@ -280,7 +275,7 @@ public class ObjectDataTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(projected.Attributes, Has.Length.EqualTo(2));
+            Assert.That(projected, Has.Count.EqualTo(2));
             Assert.That(projected.TagName, Is.EqualTo("P_101"));
             Assert.That(projected["Desc"], Is.EqualTo("Centrifugal Pump"));
         }
@@ -293,11 +288,7 @@ public class ObjectDataTests
 
         var projected = data.Project(["HiHi"]);
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(projected["HiHi"], Is.EqualTo(100.0));
-            Assert.That(projected.Attributes[0].Type, Is.EqualTo(typeof(double)));
-        }
+        Assert.That(projected["HiHi"], Is.EqualTo(100.0));
     }
 
     [Test]

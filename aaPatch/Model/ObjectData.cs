@@ -1,6 +1,6 @@
+using System.Collections;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using CliFx;
 
 namespace aaPatch.Model;
 
@@ -8,12 +8,32 @@ namespace aaPatch.Model;
 /// Represents an exported object instance from a galaxy dump file. This record contains the parent template name and
 /// tag name reference, along with the dynamic collection of attribute key/value pairs.
 /// </summary>
-public class ObjectData
+public class ObjectData : IReadOnlyCollection<AttributeData>
 {
     /// <summary>
-    /// Stores the key-value pairs of attributes associated with this object data instance.
+    /// Provides a predefined string comparer that performs case-insensitive string comparisons.
+    /// This comparer is commonly used when string operations need to ignore the case sensitivity
+    /// of characters, such as in dictionary keys or grouping operations.
     /// </summary>
-    private readonly Dictionary<string, AttributeData> _attributes;
+    private static readonly StringComparer Comparer = StringComparer.OrdinalIgnoreCase;
+
+    /// <summary>
+    /// Stores the collection of attribute data instances associated with this object.
+    /// </summary>
+    private readonly List<AttributeData> _attributes;
+
+    /// <summary>
+    /// Maintains a dictionary mapping attribute headers to their corresponding <see cref="AttributeData"/> instances,
+    /// enabling efficient lookup and management of attributes by their header values.
+    /// </summary>
+    private readonly Dictionary<string, AttributeData> _byHeader;
+
+    /// <summary>
+    /// Maintains a mapping of attribute names to their corresponding collections of attributes.
+    /// This dictionary enables quick access to attributes grouped by their names, which is useful
+    /// for operations like retrieval, updates, and projections based on attribute names.
+    /// </summary>
+    private readonly Dictionary<string, List<AttributeData>> _byName;
 
     /// <summary>
     /// Represents an exported object instance from a galaxy dump file. This record contains the parent template name and
@@ -21,8 +41,15 @@ public class ObjectData
     /// </summary>
     public ObjectData(IEnumerable<AttributeData> attributes)
     {
-        _attributes = attributes.ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
+        _attributes = [.. attributes];
+        _byHeader = _attributes.ToDictionary(a => a.Header, Comparer);
+        _byName = _attributes.GroupBy(a => a.Name).ToDictionary(x => x.Key, x => x.ToList(), Comparer);
     }
+
+    /// <summary>
+    /// Gets the total number of attributes associated with the object.
+    /// </summary>
+    public int Count => _attributes.Count;
 
     /// <summary>
     /// Gets the template string associated with this instance of the data.
@@ -35,19 +62,13 @@ public class ObjectData
     public string TagName => GetRequiredValue(nameof(TagName));
 
     /// <summary>
-    /// Provides access to the collection of attribute key/value pairs associated with the object instance.
-    /// This collection represents dynamic data extracted or modified within the context of the object.
-    /// </summary>
-    public AttributeData[] Attributes => [.. _attributes.Values];
-
-    /// <summary>
     /// Provides an indexer for accessing object data attributes by name. The indexer allows retrieval of the
     /// value associated with a specific attribute, including special cases for "Template" and "TagName".
     /// </summary>
     /// <param name="name">The name of the attribute to retrieve. Use "Template" or "TagName" to access their corresponding values,
     /// or the name of a specific object attribute.</param>
     /// <returns>The value of the requested attribute if it exists, or null if the attribute is not defined.</returns>
-    public object? this[string name] => _attributes.GetValueOrDefault(name)?.Value;
+    public object? this[string name] => GetAttribute(name).Value;
 
     /// <summary>
     /// Determines whether the object matches the specified filter condition.
@@ -113,38 +134,16 @@ public class ObjectData
             var name = index > 0 ? selection[..index] : selection;
             var alias = index > 0 ? selection[(index + 1)..] : string.Empty;
 
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(name));
-
-            if (!_attributes.TryGetValue(name, out var attribute))
-                throw new ArgumentException($"Attribute '{name}' does not exist in the object.", nameof(name));
-
+            var attribute = GetAttribute(name);
             attribute = string.IsNullOrWhiteSpace(alias) ? attribute : attribute.Rename(alias);
 
-            if (!attributes.TryAdd(attribute.Name, attribute))
+            if (!attributes.TryAdd(attribute.Header, attribute))
                 throw new ArgumentException(
-                    $"Duplicate attribute name '{attribute.Name}' in projection. Attribute names must be unique after aliasing.",
+                    $"Duplicate attribute name '{attribute.Header}' in projection. Attribute names must be unique after aliasing.",
                     nameof(selections));
         }
 
         return new ObjectData(attributes.Values);
-    }
-
-    /// <summary>
-    /// Adds or updates an attribute with the specified value for this object data instance.
-    /// </summary>
-    /// <param name="name">The name of the attribute to patch. Cannot be null, whitespace, or the TagName key.</param>
-    /// <param name="value">The value to assign to the attribute.</param>
-    /// <returns>The current ObjectData instance for method chaining.</returns>
-    public void Update(string name, string value)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(name));
-
-        if (!_attributes.TryGetValue(name, out var attribute))
-            throw new ArgumentException($"Attribute '{name}' does not exist in the object.", nameof(name));
-
-        _attributes[name] = attribute.With(value);
     }
 
     /// <summary>
@@ -176,48 +175,90 @@ public class ObjectData
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Attribute name cannot be null or whitespace.");
 
-            if (_attributes.ContainsKey(name))
+            if (_byHeader.ContainsKey(name))
                 throw new ArgumentException(
                     $"Cannot add attribute '{name}' because it already exists. Use --patch to modify an existing attribute.");
 
             var value = addition[(index + 1)..];
-            _attributes[name] = new AttributeData(name, value);
+            var attribute = new AttributeData(name, value);
+
+            _attributes.Add(attribute);
+            _byHeader[attribute.Header] = attribute;
+
+            if (!_byName.TryAdd(attribute.Name, [attribute]))
+                _byName[attribute.Name].Add(attribute);
         }
 
         return this;
     }
 
     /// <summary>
-    /// Replaces occurrences of a specified substring with a replacement string in the values of the object's attributes.
-    /// The method can target all attributes or a specific attribute based on the provided name.
+    /// Applies a set of patches to the current object attributes based on the specified criteria.
     /// </summary>
-    /// <param name="find">The substring to search for in the attribute values.</param>
-    /// <param name="replace">The string to replace the found substring with.</param>
-    /// <param name="name">The name of the specific attribute to apply the operation to. If null, the operation is applied to all attributes.</param>
-    /// <param name="matchCase">True to perform a case-sensitive search; false to perform a case-insensitive search. Default is false.</param>
-    public void Replace(string find, string replace, string? name = null, bool matchCase = false)
+    /// <param name="patches">A collection of patch strings to apply to the object's attributes.</param>
+    /// <param name="matchCase">A boolean indicating whether patch matching should be case-sensitive.</param>
+    /// <returns>The current <see cref="ObjectData"/> instance with the applied patches.</returns>
+    public ObjectData Apply(IEnumerable<string> patches, bool matchCase = false)
     {
-        var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        foreach (var patch in patches)
+            Apply(patch, matchCase);
 
-        // Apply to all attributes if no name is specified.
-        if (string.IsNullOrEmpty(name))
+        return this;
+    }
+
+    /// <summary>
+    /// Applies a modification to the object's attributes based on the provided patch string.
+    /// Supports three modes:
+    /// - Global Find and Replace (":Find=Replace"): Replaces all instances of a specified value
+    /// across attributes.
+    /// - Attribute-specific Find and Replace ("Attribute:Find=Replace"): Updates a specific attribute
+    /// by finding and replacing the specified value.
+    /// - Direct Assignment ("Attribute=Value"): Sets the specified attribute to a new value.
+    /// </summary>
+    /// <param name="patch">
+    /// The modification instruction to apply. The format is required to be one of the supported modes:
+    /// ":Find=Replace", "Attribute:Find=Replace", or "Attribute=Value".
+    /// </param>
+    /// <param name="matchCase">
+    /// A flag indicating whether the operation should be case-sensitive. Defaults to false.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the format of the patch string is invalid or when attempting to modify a
+    /// non-existing attribute.
+    /// </exception>
+    public void Apply(string patch, bool matchCase = false)
+    {
+        if (patch.StartsWith(':') && patch.Contains('='))
         {
-            foreach (var attribute in _attributes.Values.ToArray())
-            {
-                var value = attribute.Value?.ToString();
-                if (value is null || !value.Contains(find, comparison)) continue;
-                _attributes[attribute.Name] = attribute.With(value.Replace(find, replace, comparison));
-            }
+            // Global Find and Replace Mode -> ":Find=Replace"
+            var parts = patch[1..].Split('=', 2);
 
-            return;
+            if (parts.Length != 2)
+                throw new ArgumentException("Invalid global find-replace format. Expected ':Find=Replace'.");
+
+            ReplaceAll(parts[0], parts[1], matchCase);
         }
+        else if (patch.Contains(':') && patch.IndexOf(':') < patch.IndexOf('='))
+        {
+            // Attribute-specific Find and Replace Mode -> "Attribute:Find=Replace"
+            var parts = patch.Split([':', '='], 3);
 
-        if (!_attributes.TryGetValue(name, out var target))
-            throw new ArgumentException($"Attribute '{name}' does not exist in the object.", nameof(name));
+            if (parts.Length != 3)
+                throw new ArgumentException(
+                    "Invalid find-replace patch format. Expected 'Attribute:Find=Replace'.");
 
-        var current = target.Value?.ToString();
-        if (current is null || !current.Contains(find, comparison)) return;
-        _attributes[target.Name] = target.With(current.Replace(find, replace, comparison));
+            ReplaceFor(parts[0], parts[1], parts[2], matchCase);
+        }
+        else
+        {
+            // Direct Assignment Mode -> "Attribute=Value"
+            var parts = patch.Split('=', 2);
+
+            if (parts.Length != 2)
+                throw new ArgumentException("Invalid patch format. Expected 'Attribute=Value'.");
+
+            Update(parts[0], parts[1]);
+        }
     }
 
     /// <summary>
@@ -229,7 +270,72 @@ public class ObjectData
     /// </returns>
     public override string ToString()
     {
-        return string.Join(",", _attributes.Values.Select(a => a.ToString()));
+        return string.Join(",", _byName.Values.Select(a => a.ToString()));
+    }
+
+    /// <inheritdoc />
+    public IEnumerator<AttributeData> GetEnumerator()
+    {
+        return _attributes.AsEnumerable().GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+    /// <summary>
+    /// Adds or updates an attribute with the specified value for this object data instance.
+    /// </summary>
+    /// <param name="name">The name of the attribute to patch. Cannot be null, whitespace, or the TagName key.</param>
+    /// <param name="value">The value to assign to the attribute.</param>
+    /// <returns>The current ObjectData instance for method chaining.</returns>
+    private void Update(string name, string value)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(name));
+
+        var attribute = GetAttribute(name);
+        attribute.Update(value);
+    }
+
+    /// <summary>
+    /// Replaces a specified substring within the value of an attribute with another substring,
+    /// optionally considering case sensitivity during the replacement.
+    /// </summary>
+    /// <param name="name">The name of the attribute whose value is to be modified.</param>
+    /// <param name="find">The substring to find within the attribute's value.</param>
+    /// <param name="replace">The substring to replace the found substring with.</param>
+    /// <param name="matchCase">A boolean indicating whether the replacement should respect case sensitivity. If true, the comparison is case-sensitive.</param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the specified attribute name is null, whitespace, or does not exist, or if the name cannot uniquely identify the attribute.
+    /// </exception>
+    private void ReplaceFor(string name, string find, string replace, bool matchCase = false)
+    {
+        var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var attribute = GetAttribute(name);
+
+        var value = attribute.Value?.ToString();
+        if (value is null || !value.Contains(find, comparison)) return;
+        attribute.Update(value.Replace(find, replace, comparison));
+    }
+
+    /// <summary>
+    /// Replaces all occurrences of a specified substring within the attribute values of the object data.
+    /// </summary>
+    /// <param name="find">The substring to search for within attribute values.</param>
+    /// <param name="replace">The substring to replace the found occurrences with.</param>
+    /// <param name="matchCase">Specifies whether the search should be case-sensitive. Default is false.</param>
+    private void ReplaceAll(string find, string replace, bool matchCase = false)
+    {
+        var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+
+        foreach (var attribute in _attributes)
+        {
+            var value = attribute.Value?.ToString();
+            if (value is null || !value.Contains(find, comparison)) continue;
+            attribute.Update(value.Replace(find, replace, comparison));
+        }
     }
 
     /// <summary>
@@ -243,7 +349,7 @@ public class ObjectData
     /// </exception>
     private string GetRequiredValue(string key)
     {
-        if (!_attributes.TryGetValue(key, out var attribute))
+        if (!_byHeader.TryGetValue(key, out var attribute))
             throw new InvalidOperationException($"Required attribute {key} does not exist.");
 
         var result = attribute.Value?.ToString();
@@ -252,6 +358,46 @@ public class ObjectData
             throw new InvalidOperationException($"Required attribute {key} has an invalid null or empty value.");
 
         return result;
+    }
+
+    /// <summary>
+    /// Retrieves an attribute based on the provided text, which can correspond
+    /// to either the header name or a non-unique attribute name in the object data.
+    /// </summary>
+    /// <param name="text">
+    /// The name of the attribute to retrieve. This can be either the exact header
+    /// name or a non-unique attribute name. Must not be null, empty, or whitespace.
+    /// </param>
+    /// <returns>
+    /// An <see cref="AttributeData"/> instance representing the matching attribute.
+    /// </returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown if the provided text is null, empty, only whitespace, or does not
+    /// match any attributes in the object.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the provided text matches multiple attributes with the same name,
+    /// causing ambiguity.
+    /// </exception>
+    private AttributeData GetAttribute(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(text));
+
+        // Explicit match to the header text first
+        if (_byHeader.TryGetValue(text, out var matched))
+            return matched;
+
+        // Otherwise try to get by name which might not be unique.
+        if (!_byName.TryGetValue(text, out var attributes))
+            throw new ArgumentException($"Attribute '{text}' does not exist in the object.", nameof(text));
+
+        if (attributes.Count > 1)
+            throw new InvalidOperationException(
+                $"Attribute name '{text}' matches {attributes.Count} attributes and cannot be uniquely identified. " +
+                $"Use the full header name to specify the exact attribute.");
+
+        return attributes[0];
     }
 }
 
@@ -274,22 +420,19 @@ public static class ObjectDataExtensions
     /// <param name="data">The collection of ObjectData instances to serialize.</param>
     /// <param name="format">The output format for serialization. Supported values are "aveva" and "json".</param>
     /// <returns>The serialized string representation of the ObjectData collection.</returns>
-    /// <exception cref="CommandException">Thrown when an unsupported output format is specified.</exception>
+    /// <exception cref="ArgumentException">Thrown when an unsupported output format is specified.</exception>
     public static string Serialize(this IEnumerable<ObjectData> data, string format)
     {
         return format.Trim().ToLowerInvariant() switch
         {
             "aveva" => GalaxyDump.Write(data),
             "json" => WriteJson(data),
-            _ => throw new CommandException($"Unsupported output format '{format}'.")
+            _ => throw new ArgumentException($"Unsupported output format '{format}'.")
         };
 
         string WriteJson(IEnumerable<ObjectData> d)
         {
-            var dictionary = d.Select(x =>
-                x.Attributes.ToDictionary(a => a.Name, a => a.Value, StringComparer.OrdinalIgnoreCase)
-            );
-
+            var dictionary = d.Select(x => x.ToDictionary(a => a.Name, a => a.Value, StringComparer.OrdinalIgnoreCase));
             return JsonSerializer.Serialize(dictionary, JsonOptions);
         }
     }

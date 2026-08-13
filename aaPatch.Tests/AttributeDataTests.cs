@@ -148,18 +148,18 @@ public class AttributeDataTests
     }
 
     [Test]
-    public void With_CreatesNewInstanceWithSameHeader()
+    public void Update_WhenCalled_SameInstanceNewValue()
     {
         var original = new AttributeData("Level(MxDouble)", "55.5");
-        var updated = original.With("60.0");
+
+        var updated = original.Update("60.0");
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(updated.Header, Is.EqualTo(original.Header));
             Assert.That(updated.Value, Is.EqualTo(60.0));
+            Assert.AreSame(original, updated);
         }
-
-        Assert.AreNotSame(original, updated);
     }
 
     [Test]

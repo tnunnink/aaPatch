@@ -129,7 +129,7 @@ public static class GalaxyDump
             csv.WriteField(TagNameKey);
 
             // Write remaining headers based on the first object.
-            group.First().Attributes.Where(a => !a.IsIdentity).Select(a => a.Header).ToList().ForEach(csv.WriteField);
+            group.First().Where(a => !a.IsIdentity).Select(a => a.Header).ToList().ForEach(csv.WriteField);
             csv.NextRecord();
 
             // Write row for each instance in the template group.
@@ -138,7 +138,7 @@ public static class GalaxyDump
                 //Explicitly write the tag name as the first attribute
                 csv.WriteField(instance.TagName);
 
-                foreach (var attribute in instance.Attributes.Where(a => !a.IsIdentity))
+                foreach (var attribute in instance.Where(a => !a.IsIdentity))
                     csv.WriteField(attribute.ToString());
 
                 csv.NextRecord();

@@ -30,7 +30,7 @@ public class AttributeData
     /// during initialization.
     /// The value is immutable and is set during the construction of the <see cref="AttributeData"/> instance.
     /// </remarks>
-    private readonly string? _value;
+    private string? _value;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AttributeData"/> class with the specified header and optional value.
@@ -131,7 +131,11 @@ public class AttributeData
     /// <returns>
     /// The updated <see cref="AttributeData"/> instance with the new value applied.
     /// </returns>
-    public AttributeData With(string? value) => new(Header, value);
+    public AttributeData Update(string? value)
+    {
+        _value = value;
+        return this;
+    }
 
     /// <summary>
     /// Returns a string representation of the current <see cref="AttributeData"/> instance.
