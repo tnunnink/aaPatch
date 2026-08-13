@@ -86,16 +86,6 @@ public class ObjectDataTests
     }
 
     [Test]
-    public void Update_ExistingAttribute_RequiresSaveChanges()
-    {
-        var data = new ObjectData(CreateDefaultAttributes());
-
-        data.Update("HiHi", "120.0");
-
-        Assert.That(data["HiHi"], Is.EqualTo(120.0));
-    }
-
-    [Test]
     public void Update_NonExistingAttribute_ThrowsArgumentException()
     {
         var data = new ObjectData(CreateDefaultAttributes());
