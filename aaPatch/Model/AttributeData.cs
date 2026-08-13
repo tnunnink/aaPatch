@@ -122,6 +122,17 @@ public class AttributeData
     }
 
     /// <summary>
+    /// Creates a duplicate of the current <see cref="AttributeData"/> instance.
+    /// </summary>
+    /// <returns>
+    /// A new <see cref="AttributeData"/> instance with the same header and value as the current instance.
+    /// </returns>
+    public AttributeData Duplicate()
+    {
+        return new AttributeData(Header, _value);
+    }
+
+    /// <summary>
     /// Updates the value of the current <see cref="AttributeData"/> instance with the specified string value.
     /// </summary>
     /// <param name="value">

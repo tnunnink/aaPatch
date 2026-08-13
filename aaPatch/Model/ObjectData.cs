@@ -135,7 +135,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
             var alias = index > 0 ? selection[(index + 1)..] : string.Empty;
 
             var attribute = GetAttribute(name);
-            attribute = string.IsNullOrWhiteSpace(alias) ? attribute : attribute.Rename(alias);
+            attribute = string.IsNullOrWhiteSpace(alias) ? attribute.Duplicate() : attribute.Rename(alias);
 
             if (!attributes.TryAdd(attribute.Header, attribute))
                 throw new ArgumentException(
@@ -270,7 +270,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// </returns>
     public override string ToString()
     {
-        return string.Join(",", _byName.Values.Select(a => a.ToString()));
+        return string.Join(",", _attributes.Select(a => a.ToString()));
     }
 
     /// <inheritdoc />
@@ -432,7 +432,12 @@ public static class ObjectDataExtensions
 
         string WriteJson(IEnumerable<ObjectData> d)
         {
-            var dictionary = d.Select(x => x.ToDictionary(a => a.Name, a => a.Value, StringComparer.OrdinalIgnoreCase));
+            var dictionary = d.Select(x => x.ToDictionary(
+                a => a.Header,
+                a => a.Value,
+                StringComparer.OrdinalIgnoreCase)
+            );
+
             return JsonSerializer.Serialize(dictionary, JsonOptions);
         }
     }
