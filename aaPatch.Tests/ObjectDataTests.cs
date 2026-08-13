@@ -5,11 +5,12 @@ namespace aaPatch.Tests;
 [TestFixture]
 public class ObjectDataTests
 {
-    private const string TemplateName = "$Pump";
+    private const string Template = "$Pump";
     private const string TagName = "P_101";
 
     private static List<AttributeData> CreateDefaultAttributes() =>
     [
+        new(":TEMPLATE", Template),
         new(":Tagname", TagName),
         new("Description", "Centrifugal Pump"),
         new("HiHi(MxDouble)", "100.0")
@@ -20,11 +21,11 @@ public class ObjectDataTests
     {
         var attributes = CreateDefaultAttributes();
 
-        var data = new ObjectData(TemplateName, attributes);
+        var data = new ObjectData(attributes);
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(data.Template, Is.EqualTo(TemplateName));
+            Assert.That(data.Template, Is.EqualTo(Template));
             Assert.That(data.TagName, Is.EqualTo(TagName));
             Assert.That(data.Attributes.Select(a => a.Name), Has.Member("Description"));
             Assert.That(data.Attributes.Select(a => a.Value), Has.Member("Centrifugal Pump"));
@@ -32,24 +33,29 @@ public class ObjectDataTests
     }
 
     [Test]
-    public void Constructor_EmptyTemplate_ThrowsArgumentException()
+    public void Template_MissingAttribute_ThrowsInvalidOperationException()
     {
-        Assert.Throws<ArgumentException>(() => _ = new ObjectData("", CreateDefaultAttributes()));
-        Assert.Throws<ArgumentException>(() => _ = new ObjectData(" ", CreateDefaultAttributes()));
+        var attributes = new List<AttributeData> { new("Description", "No Tagname Here") };
+
+        var data = new ObjectData(attributes);
+
+        Assert.Throws<InvalidOperationException>(() => _ = data.Template);
     }
 
     [Test]
     public void TagName_MissingAttribute_ThrowsInvalidOperationException()
     {
         var attributes = new List<AttributeData> { new("Description", "No Tagname Here") };
-        var data = new ObjectData(TemplateName, attributes);
+
+        var data = new ObjectData(attributes);
+
         Assert.Throws<InvalidOperationException>(() => _ = data.TagName);
     }
 
     [Test]
     public void Indexer_NonExistingAttribute_ReturnsNull()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
 
         Assert.That(data["NonExistent"], Is.Null);
     }
@@ -57,11 +63,11 @@ public class ObjectDataTests
     [Test]
     public void Indexer_ExistingAttribute_ReturnsValue()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(data["Template"], Is.EqualTo(TemplateName));
+            Assert.That(data["Template"], Is.EqualTo(Template));
             Assert.That(data["TagName"], Is.EqualTo(TagName));
             Assert.That(data["Description"], Is.EqualTo("Centrifugal Pump"));
             Assert.That(data["HiHi"], Is.EqualTo(100.0));
@@ -72,7 +78,7 @@ public class ObjectDataTests
     [Test]
     public void Update_Assignment_UpdatesValue()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
 
         data.Update("HiHi", "120.0");
         data.ApplyPatches();
@@ -83,7 +89,7 @@ public class ObjectDataTests
     [Test]
     public void Update_ExistingAttribute_RequiresSaveChanges()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
 
         data.Update("HiHi", "120.0");
         data.ApplyPatches();
@@ -94,7 +100,7 @@ public class ObjectDataTests
     [Test]
     public void Update_NonExistingAttribute_DoesNothing()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
 
         data.Update("NewAttr", "Value123");
         data.ApplyPatches();
@@ -105,7 +111,7 @@ public class ObjectDataTests
     [Test]
     public void Update_TagName_ThrowsArgumentException()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
 
         Assert.Throws<ArgumentException>(() => data.Update(":Tagname", "NewTag"));
     }
@@ -113,7 +119,7 @@ public class ObjectDataTests
     [Test]
     public void Replace_SpecifiedAttribute_UpdatesValue()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
 
         data.Replace("Centrifugal", "Positive Displacement", "Description");
         data.ApplyPatches();
@@ -124,7 +130,7 @@ public class ObjectDataTests
     [Test]
     public void Replace_CaseInsensitiveByDefault_UpdatesValue()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
 
         data.Replace("CENTRIFUGAL", "Positive Displacement", "Description");
         data.ApplyPatches();
@@ -135,7 +141,7 @@ public class ObjectDataTests
     [Test]
     public void Replace_MatchCase_DoesNotUpdateValueWhenCasingDiffers()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
 
         data.Replace("CENTRIFUGAL", "Positive Displacement", "Description", matchCase: true);
         data.ApplyPatches();
@@ -146,7 +152,7 @@ public class ObjectDataTests
     [Test]
     public void Replace_MatchCase_UpdatesValueWhenCasingMatches()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
 
         data.Replace("Centrifugal", "Positive Displacement", "Description", matchCase: true);
         data.ApplyPatches();
@@ -157,13 +163,13 @@ public class ObjectDataTests
     [Test]
     public void Diffs_ReturnsFormattedStrings()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
 
         data.Update("Description", "New Pump");
         data.Update("HiHi", "150.0");
 
         var diffs = data.Diffs().ToList();
-        
+
         using (Assert.EnterMultipleScope())
         {
             Assert.That(diffs, Has.Count.EqualTo(2));
@@ -175,7 +181,7 @@ public class ObjectDataTests
     [Test]
     public void Diffs_ReplaceNoMatch_ShouldNotCreateDiffs()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
         data.Replace("NonExistent", "Replacement");
 
         var diffs = data.Diffs().ToList();
@@ -186,7 +192,7 @@ public class ObjectDataTests
     [Test]
     public void Diffs_ReplacePartialMatch_ShouldOnlyDiffChangedAttributes()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
         data.Replace("Centrifugal", "Positive");
 
         var diffs = data.Diffs().ToList();
@@ -198,7 +204,7 @@ public class ObjectDataTests
     [Test]
     public void Diffs_UpdateSameValue_ShouldNotCreateDiffs()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
         data.Update("Description", "Centrifugal Pump");
 
         var diffs = data.Diffs().ToList();
@@ -209,7 +215,7 @@ public class ObjectDataTests
     [Test]
     public void ApplyPatches_ClearsPatches()
     {
-        var data = new ObjectData(TemplateName, CreateDefaultAttributes());
+        var data = new ObjectData(CreateDefaultAttributes());
 
         data.Update("Description", "New Pump");
         Assert.That(data.Diffs(), Is.Not.Empty);

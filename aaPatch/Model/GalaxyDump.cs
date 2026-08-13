@@ -13,7 +13,7 @@ public static class GalaxyDump
     /// Represents a constant key used to identify the template attribute in the object data.
     /// This key is used internally for accessing or verifying the template string associated with the object.
     /// </summary>
-    private const string TemplateKey = ":Template=";
+    private const string TemplateKey = ":TEMPLATE";
 
     /// <summary>
     /// Reads a text representation of object data organized by templates and converts it into a collection of <see cref="ObjectData"/> instances.
@@ -27,6 +27,7 @@ public static class GalaxyDump
         if (string.IsNullOrWhiteSpace(text))
             throw new ArgumentException("The text parameter cannot be null or empty.", nameof(text));
 
+        //todo this probably needs to look for the :template identifier
         var segments = text
             .Split(string.Concat(Environment.NewLine, Environment.NewLine), StringSplitOptions.RemoveEmptyEntries)
             .Select(s => s.Trim());
@@ -37,7 +38,7 @@ public static class GalaxyDump
         {
             // Skip any segment that does not have our template key at the start.
             if (!segment.StartsWith(TemplateKey, StringComparison.OrdinalIgnoreCase))
-                return [];
+                yield break;
 
             // We know that each segment needs at least 3 lines (template identifier, attribute header, and instance(s) row)
             var lines = segment.Split(Environment.NewLine);
@@ -55,7 +56,7 @@ public static class GalaxyDump
 
             // Read the template name for this set of object instances and recombine
             // all the records to single string that CsvHelper can easily parse for us.
-            var template = lines[0][TemplateKey.Length..];
+            var template = lines[0][(TemplateKey.Length + 1)..];
             var instances = string.Join(Environment.NewLine, lines[1..]);
 
             using var sr = new StringReader(instances);
@@ -65,11 +66,15 @@ public static class GalaxyDump
                 TrimOptions = TrimOptions.Trim
             });
 
-            // Read and transform all records to object data with corresponding attributes and template name
-            return csv.GetRecords<dynamic>()
-                .Cast<IDictionary<string, object?>>()
-                .Select(x => x.Select(p => new AttributeData(p.Key, p.Value?.ToString())))
-                .Select(a => new ObjectData(template, a)).ToArray();
+            var records = csv.GetRecords<dynamic>().Cast<IDictionary<string, object?>>().ToArray();
+
+            foreach (var record in records)
+            {
+                // inject the template name as a special attribute back into the attribute data for the object instance
+                record[TemplateKey] = template;
+                var attributes = record.Select(x => new AttributeData(x.Key, x.Value?.ToString()));
+                yield return new ObjectData(attributes);
+            }
         }
     }
 
@@ -94,17 +99,20 @@ public static class GalaxyDump
         foreach (var group in groups)
         {
             // First line for each group is the template key.
-            writer.WriteLine($":TEMPLATE={group.Key}");
+            writer.WriteLine($"{TemplateKey}={group.Key}");
 
             // Write headers based on the first object. Ideally, all should match...
-            group.First().Attributes.Select(a => a.Header).ToList().ForEach(csv.WriteField);
+            group.First().Attributes.Where(a => !a.IsTemplate).Select(a => a.Header).ToList().ForEach(csv.WriteField);
             csv.NextRecord();
 
             // Write row for each instance in the template group.
             foreach (var instance in group)
             {
                 foreach (var attribute in instance.Attributes)
+                {
+                    if (attribute.IsTemplate) continue;
                     csv.WriteField(attribute.ToString());
+                }
 
                 csv.NextRecord();
             }

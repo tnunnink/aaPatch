@@ -45,13 +45,15 @@ public class GalaxyDumpTests
     {
         var objects = new List<ObjectData>
         {
-            new("$Pump", new List<AttributeData>
+            new(new List<AttributeData>
             {
+                new(":Template", "$Pump"),
                 new(":Tagname", "P_101"),
                 new("Description", "Pump 1")
             }),
-            new("$Valve", new List<AttributeData>
+            new(new List<AttributeData>
             {
+                new(":Template", "$Valve"),
                 new(":Tagname", "V_101"),
                 new("Description", "Valve 1")
             })

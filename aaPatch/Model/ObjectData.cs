@@ -7,10 +7,16 @@ namespace aaPatch.Model;
 public class ObjectData
 {
     /// <summary>
+    /// Defines a constant key used to identify the parent template name associated with the object data.
+    /// This key is used internally to access or validate the template name within the attribute collection.
+    /// </summary>
+    private const string TemplateKey = ":template";
+
+    /// <summary>
     /// Defines a constant key used to identify the attribute associated with the tag name in the object data.
     /// This key is used internally to access or verify the tag name attribute within the attribute collection.
     /// </summary>
-    private const string TagNameKey = ":Tagname";
+    private const string TagNameKey = ":tagname";
 
     /// <summary>
     /// Stores the key-value pairs of attributes associated with this object data instance.
@@ -28,30 +34,26 @@ public class ObjectData
     /// Represents an exported object instance from a galaxy dump file. This record contains the parent template name and
     /// tag name reference, along with the dynamic collection of attribute key/value pairs.
     /// </summary>
-    public ObjectData(string template, IEnumerable<AttributeData> attributes)
+    public ObjectData(IEnumerable<AttributeData> attributes)
     {
-        if (string.IsNullOrWhiteSpace(template))
-            throw new ArgumentException("Template name is required for object data.");
-
-        Template = template;
-        _attributes = attributes.ToDictionary(a => a.Name);
+        _attributes = attributes.ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
     /// Gets the template string associated with this instance of the data.
     /// </summary>
-    public string Template { get; }
+    public string Template => GetRequiredValue(TemplateKey);
 
     /// <summary>
     /// Gets the tag name identifier for this object data instance.
     /// </summary>
-    public string TagName => GetTagName();
+    public string TagName => GetRequiredValue(TagNameKey);
 
     /// <summary>
     /// Provides access to the collection of attribute key/value pairs associated with the object instance.
     /// This collection represents dynamic data extracted or modified within the context of the object.
     /// </summary>
-    public AttributeData[] Attributes => _attributes.Values.ToArray();
+    public AttributeData[] Attributes => [.. _attributes.Values];
 
     /// <summary>
     /// Provides an indexer for accessing object data attributes by name. The indexer allows retrieval of the
@@ -84,7 +86,7 @@ public class ObjectData
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(name));
 
-        if (name == TagNameKey)
+        if (StringComparer.OrdinalIgnoreCase.Equals(TagNameKey, name))
             throw new ArgumentException("Cannot modify the TagName attribute.", nameof(name));
 
         if (_attributes.TryGetValue(name, out var attribute))
@@ -144,7 +146,7 @@ public class ObjectData
     /// </summary>
     /// <returns>
     /// An enumerable collection of strings, where each string represents a diff in the format:
-    /// "TagName: 'AttributeName' "OriginalValue" -> "PatchedValue"".
+    /// "TagName: 'AttributeName' "OriginalValue" -> "PatchedValue".
     /// </returns>
     public IEnumerable<string> Diffs()
     {
@@ -183,25 +185,24 @@ public class ObjectData
     }
 
     /// <summary>
-    /// Retrieves the tag name of the object data instance from the attribute collection.
-    /// The tag name is identified using a predefined key.
+    /// Retrieves the value associated with the specified key from the attribute collection.
+    /// If the key does not exist or the value is null or empty, an exception is thrown.
     /// </summary>
-    /// <returns>
-    /// The tag name associated with the object data instance.
-    /// </returns>
+    /// <param name="key">The key of the attribute to retrieve.</param>
+    /// <returns>The value of the specified attribute as a non-null, non-empty string.</returns>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when the tag name attribute is missing or has an invalid value in the attribute collection.
+    /// Thrown if the specified key is not found or if the corresponding value is null or empty.
     /// </exception>
-    private string GetTagName()
+    private string GetRequiredValue(string key)
     {
-        if (!_attributes.TryGetValue(TagNameKey, out var attribute))
-            throw new InvalidOperationException($"Required attribute {TagNameKey} does not exist.");
+        if (!_attributes.TryGetValue(key, out var attribute))
+            throw new InvalidOperationException($"Required attribute {key} does not exist.");
 
-        var tagName = attribute.Value?.ToString();
+        var result = attribute.Value?.ToString();
 
-        if (string.IsNullOrEmpty(tagName))
-            throw new InvalidOperationException($"Required attribute {TagNameKey} has invalid null or empty value.");
+        if (string.IsNullOrEmpty(result))
+            throw new InvalidOperationException($"Required attribute {key} has an invalid null or empty value.");
 
-        return tagName;
+        return result;
     }
 }

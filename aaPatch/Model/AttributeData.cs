@@ -12,6 +12,17 @@
 public class AttributeData
 {
     /// <summary>
+    /// Stores the optional raw string value associated with the attribute.
+    /// </summary>
+    /// <remarks>
+    /// This field contains the attribute's value as a string, which may correspond to a specific type
+    /// based on the type information parsed from the header. It can be null if no value is provided
+    /// during initialization.
+    /// The value is immutable and is set during the construction of the <see cref="AttributeData"/> instance.
+    /// </remarks>
+    private readonly string? _value;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="AttributeData"/> class with the specified header and optional value.
     /// </summary>
     /// <remarks>
@@ -28,7 +39,7 @@ public class AttributeData
             throw new ArgumentException("Header cannot be null or empty.", nameof(header));
 
         Header = header;
-        Value = ParseValue(ParseType(Header), value);
+        _value = value;
     }
 
     /// <summary>
@@ -50,7 +61,20 @@ public class AttributeData
     /// preceding the first occurrence of a type definition enclosed in parentheses.
     /// If no such portion exists, the full header string is returned as the name.
     /// </remarks>
-    public string Name => ParseName(Header);
+    public string Name => ParseName();
+
+    /// <summary>
+    /// Gets the type information extracted from the header string.
+    /// </summary>
+    /// <remarks>
+    /// This property parses the type portion from the header string to determine the data type
+    /// associated with the attribute. The type is derived by analyzing the format of the header,
+    /// typically in the structure "Name(TypeName)", where "TypeName" specifies the type.
+    /// If the type is not explicitly defined in the header, it defaults to <see cref="string"/>.
+    /// The property ensures that the type information is consistently resolved and is immutable
+    /// after initialization.
+    /// </remarks>
+    public Type Type => ParseType();
 
     /// <summary>
     /// Retrieves the parsed value associated with the attribute data.
@@ -61,7 +85,17 @@ public class AttributeData
     /// also be null. The type of the returned object can vary and depends on
     /// the type specified in the header (e.g., string, int, bool, etc.).
     /// </remarks>
-    public object? Value { get; }
+    public object? Value => ParseValue();
+
+    /// <summary>
+    /// Indicates whether the attribute represents the special/virtual template name attribute.
+    /// </summary>
+    /// <remarks>
+    /// This property evaluates whether the name of the attribute is equivalent to ":template",
+    /// using a case-insensitive ordinal string comparison. It is a read-only property
+    /// determined based on the parsed attribute name.
+    /// </remarks>
+    public bool IsTemplate => StringComparer.OrdinalIgnoreCase.Equals(Name, ":template");
 
     /// <summary>
     /// Updates the value of the current <see cref="AttributeData"/> instance with the specified string value.
@@ -97,25 +131,38 @@ public class AttributeData
     }
 
     /// <summary>
-    /// Extracts and returns the name portion from the provided header string.
+    /// Extracts the attribute name from the header string.
     /// </summary>
-    /// <param name="header">The header string from which the name portion is to be extracted.</param>
-    /// <returns>The name portion extracted from the header string.</returns>
-    private static string ParseName(string header)
+    /// <remarks>
+    /// The name is determined by parsing the header string. If the header contains a type declaration
+    /// in the format "Name(TypeName)", the name is extracted before the opening parenthesis.
+    /// If no parenthesis is found, the entire header string is returned as the name.
+    /// </remarks>
+    /// <returns>
+    /// A string representing the attribute name parsed from the header. Cannot be null or empty.
+    /// </returns>
+    private string ParseName()
     {
-        var typeStart = header.IndexOf('(');
-        return typeStart > 0 ? header[..typeStart] : header;
+        var typeStart = Header.IndexOf('(');
+        return typeStart > 0 ? Header[..typeStart] : Header;
     }
 
     /// <summary>
-    /// Extracts and returns the name portion from the provided header string.
+    /// Parses the type information from the header string and returns the corresponding <see cref="Type"/>.
     /// </summary>
-    /// <param name="header">The header string from which the name portion is to be extracted.</param>
-    /// <returns>The name portion extracted from the header string.</returns>
-    private static Type ParseType(string header)
+    /// <remarks>
+    /// The header string is expected to specify the type in the format "Name(TypeName)", where TypeName is optional.
+    /// If TypeName is not provided, the method defaults to returning the <see cref="string"/> type.
+    /// Valid TypeName values include "MxBoolean", "MxInteger", "MxFloat", and "MxDouble".
+    /// </remarks>
+    /// <returns>
+    /// A <see cref="Type"/> that corresponds to the type information extracted from the header.
+    /// Returns <see cref="string"/> if no type information is specified.
+    /// </returns>
+    private Type ParseType()
     {
-        var typeStart = header.IndexOf('(') + 1;
-        var typeName = typeStart > 0 ? header[typeStart..].TrimEnd(')') : string.Empty;
+        var typeStart = Header.IndexOf('(') + 1;
+        var typeName = typeStart > 0 ? Header[typeStart..].TrimEnd(')') : string.Empty;
 
         return typeName switch
         {
@@ -128,23 +175,35 @@ public class AttributeData
     }
 
     /// <summary>
-    /// Parses the provided value string and converts it into an object of the specified type.
+    /// Parses the raw string value associated with the attribute and converts it to the expected type.
     /// </summary>
-    /// <param name="type">The target type to which the value should be converted.</param>
-    /// <param name="value">The string representation of the value to be parsed.</param>
-    /// <returns>An object of the specified type that represents the parsed value. Returns null if the input value is null.</returns>
-    private static object? ParseValue(Type type, string? value)
+    /// <remarks>
+    /// This method interprets the attribute's type parsed from the header and attempts to
+    /// convert the stored value into the corresponding .NET type. If the value is null or consists only
+    /// of whitespace, the method returns null. Conversion supports types such as bool, int, float,
+    /// and double. If the type does not match any known types, the raw string value is returned as-is.
+    /// </remarks>
+    /// <returns>
+    /// The parsed value as an object of the type determined by the header, or null if the value is
+    /// null or empty.
+    /// </returns>
+    /// <exception cref="FormatException">
+    /// Thrown if the value cannot be converted to the expected type (e.g., invalid number format).
+    /// </exception>
+    private object? ParseValue()
     {
-        if (string.IsNullOrWhiteSpace(value))
+        if (string.IsNullOrWhiteSpace(_value))
             return null;
+
+        var type = ParseType();
 
         return type switch
         {
-            _ when type == typeof(bool) => bool.Parse(value),
-            _ when type == typeof(int) => int.Parse(value),
-            _ when type == typeof(float) => float.Parse(value),
-            _ when type == typeof(double) => double.Parse(value),
-            _ => value
+            _ when type == typeof(bool) => bool.Parse(_value),
+            _ when type == typeof(int) => int.Parse(_value),
+            _ when type == typeof(float) => float.Parse(_value),
+            _ when type == typeof(double) => double.Parse(_value),
+            _ => _value
         };
     }
 }

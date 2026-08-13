@@ -16,25 +16,18 @@ public partial class PatchCommand : ICommand
     private const string AdditionInfoMessage = "Use command 'aaPatch info' for format rules.";
 
     /// <summary>
-    /// Gets or sets the path to the input CSV file containing Galaxy dump data.
+    /// Gets or sets the path to the input file containing Galaxy dump CSV.
     /// If not specified, input is read from standard input (stdin).
     /// </summary>
-    [CommandOption("input", 'i', Description = "Path to the input CSV file. If not specified, reads from stdin.")]
+    [CommandOption("input", 'i', Description = "Path to the input file. If not specified, reads from stdin.")]
     public string? InputFile { get; set; }
 
     /// <summary>
-    /// Gets or sets the path to the output CSV file where patched Galaxy dump data will be written.
+    /// Gets or sets the path to the output file where patched Galaxy dump data will be written.
     /// If not specified, the output is written to standard output (stdout).
     /// </summary>
-    [CommandOption("output", 'o', Description = "Path to the output CSV file. If not specified, writes to stdout.")]
+    [CommandOption("output", 'o', Description = "Path to the output file. If not specified, writes to stdout.")]
     public string? OutputFile { get; set; }
-
-    /// <summary>
-    /// Gets the collection of patches to apply to matching objects.
-    /// Supports two formats: 'Attribute=Value' for direct assignment, or 'Attribute:Find=Replace' for find-replace operations.
-    /// </summary>
-    [CommandOption("patch", 'p', Description = $"Patch expression to apply. {AdditionInfoMessage}")]
-    public IReadOnlyList<string> Patches { get; set; } = [];
 
     /// <summary>
     /// Gets the tag name filter pattern used to select which objects to patch.
@@ -42,6 +35,13 @@ public partial class PatchCommand : ICommand
     /// </summary>
     [CommandOption("filter", 'f', Description = $"Filter expression to filter objects. {AdditionInfoMessage}")]
     public string? Filter { get; set; }
+
+    /// <summary>
+    /// Gets the collection of patches to apply to matching objects.
+    /// Supports two formats: 'Attribute=Value' for direct assignment, or 'Attribute:Find=Replace' for find-replace operations.
+    /// </summary>
+    [CommandOption("patch", 'p', Description = $"Patch expression to apply. {AdditionInfoMessage}")]
+    public IReadOnlyList<string> Patches { get; set; } = [];
 
     /// <summary>
     /// Gets the template name filter pattern used to select which objects to patch.
@@ -62,7 +62,7 @@ public partial class PatchCommand : ICommand
     /// Default is false (case-insensitive).
     /// </summary>
     [CommandOption("match-case", 'm', Description = "Perform case-sensitive matching for find-replace operations.")]
-    public bool MatchCase { get; set; } = false;
+    public bool MatchCase { get; set; }
 
     /// <summary>
     /// Executes the patch command by reading Galaxy dump data, applying filters and patches, and writing the modified output.
