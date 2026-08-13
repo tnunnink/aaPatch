@@ -85,9 +85,6 @@ public partial class PatchCommand : ICommand
 
         try
         {
-            if (Additions.Count > 0 && !string.Equals(Format, "json", StringComparison.OrdinalIgnoreCase))
-                throw new CommandException("Added attributes are currently supported only with JSON output.");
-
             var csv = InputFile is null
                 ? await console.Input.ReadToEndAsync()
                 : await File.ReadAllTextAsync(InputFile, cancellation);

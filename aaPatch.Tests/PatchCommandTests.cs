@@ -2,8 +2,6 @@
 
 namespace aaPatch.Tests;
 
-using System.Text.Json;
-
 using CliFx;
 using CliFx.Infrastructure;
 
@@ -494,46 +492,54 @@ public class PatchCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_Additions_AppliedToFilteredObjects()
+    public async Task ExecuteAsync_Additions_ContainsExpectedText()
     {
         using var console = new FakeInMemoryConsole();
-        var cmd = new PatchCommand
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
         {
-            InputFile = null,
-            Format = "json",
-            Filter = "TagName=P101",
-            Additions = ["source=AVEVA"]
+            Additions = ["NewField=123"]
         };
 
-        var csv = ":TEMPLATE=$Pump\n:Tagname,Description\nP101,Pump 1\nP102,Pump 2";
-        console.WriteInput(csv);
-
-        await cmd.ExecuteAsync(console);
+        await command.ExecuteAsync(console);
 
         var output = console.ReadOutputString();
-        var json = JsonDocument.Parse(output);
-        var array = json.RootElement.EnumerateArray().ToList();
 
-        Assert.That(array, Has.Count.EqualTo(1));
-        Assert.That(array[0].GetProperty("TagName").GetString(), Is.EqualTo("P101"));
-        Assert.That(array[0].GetProperty("source").GetString(), Is.EqualTo("AVEVA"));
+        Assert.That(output, Does.Contain("NewField"));
+        Assert.That(output, Does.Contain("123"));
     }
 
     [Test]
-    public void ExecuteAsync_Additions_AvevaFormat_Throws()
+    public async Task ExecuteAsync_Additions_HasExpectedOutput()
     {
         using var console = new FakeInMemoryConsole();
-        var cmd = new PatchCommand
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
         {
-            InputFile = null,
-            Format = "aveva",
-            Additions = ["source=AVEVA"]
+            Additions = ["NewField=123"]
         };
 
-        var csv = ":TEMPLATE=$Pump\n:Tagname\nP101";
-        console.WriteInput(csv);
+        await command.ExecuteAsync(console);
 
-        var ex = Assert.ThrowsAsync<CommandException>(async () => await cmd.ExecuteAsync(console));
-        Assert.That(ex.Message, Does.Contain("Added attributes are currently supported only with JSON output"));
+        await Verify(console.ReadOutputString());
+    }
+    
+    [Test]
+    public async Task ExecuteAsync_AdditionsInJson_HasExpectedOutput()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Additions = ["NewField=123"],
+            Format = "json"
+        };
+
+        await command.ExecuteAsync(console);
+
+        await Verify(console.ReadOutputString());
     }
 }

@@ -56,6 +56,12 @@
         <None Update="PatchCommandTests.ExecuteAsync_JsonFormat_HasVerifiedOutput.verified.txt">
           <DependentUpon>PatchCommandTests.cs</DependentUpon>
         </None>
+        <None Update="PatchCommandTests.ExecuteAsync_Additions_HasExpectedOutput.verified.txt">
+          <DependentUpon>PatchCommandTests.cs</DependentUpon>
+        </None>
+        <None Update="PatchCommandTests.ExecuteAsync_AdditionsInJson_HasExpectedOutput.verified.txt">
+          <DependentUpon>PatchCommandTests.cs</DependentUpon>
+        </None>
     </ItemGroup>
 
     <ItemGroup>

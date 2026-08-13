@@ -1,0 +1,7 @@
+﻿:TEMPLATE=$Pump
+:Tagname,Description,HiHi,NewField
+P_101,Centrifugal Pump,100.0,123
+
+:TEMPLATE=$Valve
+:Tagname,Description,OpenLimit,NewField
+V_201,Gate Valve,True,123
