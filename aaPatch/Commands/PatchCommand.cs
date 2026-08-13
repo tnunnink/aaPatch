@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using aaPatch.Model;
 using CliFx;
 using CliFx.Binding;
@@ -42,14 +41,15 @@ public partial class PatchCommand : ICommand
     /// </summary>
     [CommandOption("patch", 'p', Description = $"Patch expression to apply. {AdditionInfoMessage}")]
     public IReadOnlyList<string> Patches { get; set; } = [];
-    
+
     /// <summary>
     /// Gets the collection of attribute names to include in the output.
     /// When specified, only the selected attributes will be included in the output objects.
     /// If not specified, all attributes are included.
     /// </summary>
-    [CommandOption("select", 's', Description = $"Selection expression to specify attributes to include in output. {AdditionInfoMessage}")]
-    public IReadOnlyList<string> Select { get; set; } = [];
+    [CommandOption("select", 's',
+        Description = $"Selection expression to specify attributes to include in output. {AdditionInfoMessage}")]
+    public IReadOnlyList<string> Selections { get; set; } = [];
 
     /// <summary>
     /// Gets or sets a value indicating whether to perform case-sensitive matching for find-replace operations.
@@ -78,6 +78,7 @@ public partial class PatchCommand : ICommand
             var patches = objects
                 .Where(x => x.Matches(Filter))
                 .Select(GeneratePatch)
+                .Select(x => Selections.Count > 0 ? x.Project(Selections) : x)
                 .ToList();
 
             var write = OutputFile is null
