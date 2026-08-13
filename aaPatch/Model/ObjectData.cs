@@ -61,12 +61,8 @@ public class ObjectData
     {
         get
         {
-            return name switch
-            {
-                "Template" => Template,
-                "TagName" => TagName,
-                _ => _attributes.GetValueOrDefault(name)?.Value
-            };
+            name = NormalizeName(name);
+            return _attributes.GetValueOrDefault(name)?.Value;
         }
     }
 
@@ -112,11 +108,13 @@ public class ObjectData
     /// <returns>The current ObjectData instance for method chaining.</returns>
     public void Update(string name, string value)
     {
+        name = NormalizeName(name);
+
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(name));
 
-        if (StringComparer.OrdinalIgnoreCase.Equals(TagNameKey, name))
-            throw new ArgumentException("Cannot modify the TagName attribute.", nameof(name));
+        if (IsIdentity(name))
+            throw new ArgumentException($"Cannot modify the identity attribute '{name}'.", nameof(name));
 
         if (!_attributes.TryGetValue(name, out var attribute))
             throw new ArgumentException($"Attribute '{name}' does not exist in the object.", nameof(name));
@@ -134,14 +132,15 @@ public class ObjectData
     /// <param name="matchCase">True to perform a case-sensitive search; false to perform a case-insensitive search. Default is false.</param>
     public void Replace(string find, string replace, string? name = null, bool matchCase = false)
     {
+        name = NormalizeName(name);
         var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
         // Apply to all attributes if no name is specified.
-        if (name is null)
+        if (string.IsNullOrEmpty(name))
         {
-            foreach (var attribute in _attributes.Values)
+            foreach (var attribute in _attributes.Values.ToArray())
             {
-                if (attribute.Name == TagNameKey) continue;
+                if (IsIdentity(attribute.Name)) continue;
                 var value = attribute.Value?.ToString();
                 if (value is null || !value.Contains(find, comparison)) continue;
                 _attributes[attribute.Name] = attribute.With(value.Replace(find, replace, comparison));
@@ -149,11 +148,13 @@ public class ObjectData
 
             return;
         }
-        
-        // Apply to specified attribute name
+
+        if (IsIdentity(name))
+            throw new ArgumentException($"Cannot modify the identity attribute '{name}'.", nameof(name));
+
         if (!_attributes.TryGetValue(name, out var target))
             throw new ArgumentException($"Attribute '{name}' does not exist in the object.", nameof(name));
-        
+
         var current = target.Value?.ToString();
         if (current is null || !current.Contains(find, comparison)) return;
         _attributes[target.Name] = target.With(current.Replace(find, replace, comparison));
@@ -191,5 +192,35 @@ public class ObjectData
             throw new InvalidOperationException($"Required attribute {key} has an invalid null or empty value.");
 
         return result;
+    }
+
+    /// <summary>
+    /// Determines whether a given attribute name corresponds to an identity attribute in the object data.
+    /// Identity attributes are predefined key values essential to the object's identity, such as
+    /// the template or tag name.
+    /// </summary>
+    /// <param name="name">The name of the attribute to evaluate.</param>
+    /// <returns>
+    /// True if the attribute name corresponds to an identity attribute; otherwise, false.
+    /// </returns>
+    private static bool IsIdentity(string name)
+    {
+        return string.Equals(name, TemplateKey, StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(name, TagNameKey, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Normalizes the provided attribute name to ensure consistency. Translates specific
+    /// attribute names like "Template" or "TagName" into their standardized internal keys.
+    /// </summary>
+    /// <param name="name">The attribute name to be normalized.</param>
+    /// <returns>The normalized attribute name. If "Template" or "TagName" is provided,
+    /// their respective internal keys are returned; otherwise, the original name is
+    /// returned unchanged.</returns>
+    private static string NormalizeName(string? name)
+    {
+        if (string.Equals(name, "Template", StringComparison.OrdinalIgnoreCase)) return TemplateKey;
+        if (string.Equals(name, "TagName", StringComparison.OrdinalIgnoreCase)) return TagNameKey;
+        return name ?? string.Empty;
     }
 }

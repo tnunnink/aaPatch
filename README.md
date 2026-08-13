@@ -9,9 +9,7 @@ exports, making it a handy tool for automation engineers working with ArchestrA-
 - **Bulk Attribute Updates**: Update object attributes across many objects simultaneously.
 - **Find and Replace**: Perform targeted string replacements within specific attributes or globally across all
   attributes.
-- **Advanced Filtering**: Target objects by Template name, Tag name, or any attribute value using wildcard patterns (
-  e.g., `*`).
-- **Preview Mode**: Review exactly what changes will be made before applying them.
+- **Advanced Filtering**: Select which objects are included in the output by Template name, Tag name, or any attribute value using wildcard patterns (e.g., `*`).
 - **Standard Stream Support**: Seamlessly integrates into pipelines using stdin and stdout.
 - **Cross-Platform**: Built on .NET 10, running on Windows, Linux, and macOS.
 
@@ -40,9 +38,7 @@ aapatch [options]
 | `--input`      | `-i`      | Path to the input Galaxy dump CSV file. If omitted, reads from stdin.                                        |
 | `--output`     | `-o`      | Path to the output CSV file. If omitted, writes to stdout.                                                   |
 | `--patch`      | `-p`      | Patch to apply. Can be used multiple times.                                                                  |
-| `--filter`     | `-f`      | Filter objects by attribute value or TagName (e.g. `Description=Pump*` or just `P_10*`). Supports wildcards. |
-| `--templates`  | `-t`      | Filter objects by template name. Supports wildcards.                                                         |
-| `--preview`    |           | Preview changes on stderr without modifying any data.                                                        |
+| `--filter`     | `-f`      | Filter which objects are included in the output (e.g. `Template=$Pump`, `Description=Pump*` or just `P_10*`). Supports wildcards. |
 | `--match-case` | `-m`      | Perform case-sensitive matching for find-replace operations. Default is case-insensitive.                    |
 
 ### Patch Formats
@@ -82,12 +78,12 @@ Update the description for all objects in a dump file:
 aapatch -i GalaxyExport.csv -o PatchedExport.csv -p "Description=Standardized Description"
 ```
 
-### 2. Filtering and Previewing
+### 2. Filtering Output
 
-Preview a PLC address update for all pumps that match a specific naming convention without actually changing the file:
+Update a PLC address for specific objects and only include them in the output:
 
 ```bash
-aapatch -i Export.csv -p "ShortDesc:OldSystem=NewSystem" -t "$Pump_Base" -f "P_10*" --preview
+aapatch -i Export.csv -p "ShortDesc:OldSystem=NewSystem" -f "Template=$Pump_Base" -f "P_10*"
 ```
 
 ### 3. Attribute-based Filtering

@@ -27,9 +27,8 @@ public static class GalaxyDump
         if (string.IsNullOrWhiteSpace(text))
             throw new ArgumentException("The text parameter cannot be null or empty.", nameof(text));
 
-        //todo this probably needs to look for the :template identifier
         var segments = text
-            .Split(string.Concat(Environment.NewLine, Environment.NewLine), StringSplitOptions.RemoveEmptyEntries)
+            .Split(["\r\n\r\n", "\n\n"], StringSplitOptions.RemoveEmptyEntries)
             .Select(s => s.Trim());
 
         return segments.SelectMany(ReadTemplate);
@@ -41,7 +40,7 @@ public static class GalaxyDump
                 yield break;
 
             // We know that each segment needs at least 3 lines (template identifier, attribute header, and instance(s) row)
-            var lines = segment.Split(Environment.NewLine);
+            var lines = segment.Split(["\r\n", "\n"], StringSplitOptions.None);
 
             switch (lines.Length)
             {

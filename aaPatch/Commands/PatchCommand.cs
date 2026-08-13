@@ -30,8 +30,8 @@ public partial class PatchCommand : ICommand
     public string? OutputFile { get; set; }
 
     /// <summary>
-    /// Gets the tag name filter pattern used to select which objects to patch.
-    /// Supports wildcard patterns. If not specified, all tag names are matched.
+    /// Gets the filter pattern used to select which objects are included in the output.
+    /// Supports wildcard patterns. If not specified, all objects are matched.
     /// </summary>
     [CommandOption("filter", 'f', Description = $"Filter expression to filter objects. {AdditionInfoMessage}")]
     public string? Filter { get; set; }
@@ -51,7 +51,7 @@ public partial class PatchCommand : ICommand
     public bool MatchCase { get; set; }
 
     /// <summary>
-    /// Executes the patch command by reading Galaxy dump data, applying filters and patches, and writing the modified output.
+    /// Executes the patch command by reading Galaxy dump data, filtering the output objects, applying patches, and writing the result.
     /// </summary>
     /// <param name="console">The console interface for input/output operations and cancellation handling.</param>
     /// <returns>A ValueTask representing the asynchronous operation.</returns>

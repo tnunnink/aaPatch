@@ -36,14 +36,13 @@ public partial class InfoCommand : ICommand
             By default, find and replace operations are CASE-INSENSITIVE.
             Use --match-case or -m to perform case-sensitive matching.
 
-            Filters and Templates:
-            ----------------------
-            Use -f or --filter to select specific objects.
+            Filtering:
+            ----------
+            Use -f or --filter to select which objects are included in the output.
             Format: [Attribute=]Pattern
             Example: -f "Pump*" (Matches TagName starting with Pump)
+            Example: -f "Template=$Pump" (Matches objects where Template is $Pump)
             Example: -f "Area=Area1" (Matches objects where Area is Area1)
-
-            Use -t or --templates to limit patches to specific templates (e.g., -t "$UserDefined").
             """;
 
         console.Output.WriteLine(infoText);
