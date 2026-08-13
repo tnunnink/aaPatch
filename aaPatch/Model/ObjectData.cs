@@ -237,7 +237,7 @@ public static class ObjectDataExtensions
     /// <exception cref="CommandException">Thrown when an unsupported output format is specified.</exception>
     public static string Serialize(this IEnumerable<ObjectData> data, string format)
     {
-        return format switch
+        return format.Trim().ToLowerInvariant() switch
         {
             "aveva" => GalaxyDump.Write(data),
             "json" => WriteJson(data),

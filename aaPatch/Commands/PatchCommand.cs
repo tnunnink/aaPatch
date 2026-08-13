@@ -83,17 +83,17 @@ public partial class PatchCommand : ICommand
 
             var objects = GalaxyDump.Read(csv).ToList();
 
-            var patches = objects
+            var output = objects
                 .Where(x => x.Matches(Filter))
                 .Select(GeneratePatch)
                 .Select(x => Selections.Count > 0 ? x.Project(Selections) : x)
                 .ToList();
 
-            var output = patches.Serialize(Format);
+            var content = output.Serialize(Format);
 
             var write = OutputFile is null
-                ? console.Output.WriteAsync(output)
-                : File.WriteAllTextAsync(OutputFile, output, cancellation);
+                ? console.Output.WriteAsync(content)
+                : File.WriteAllTextAsync(OutputFile, content, cancellation);
 
             await write;
         }
