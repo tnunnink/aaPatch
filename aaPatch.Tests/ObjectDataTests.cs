@@ -81,7 +81,6 @@ public class ObjectDataTests
         var data = new ObjectData(CreateDefaultAttributes());
 
         data.Update("HiHi", "120.0");
-        data.ApplyPatches();
 
         Assert.That(data["HiHi"], Is.EqualTo(120.0));
     }
@@ -92,20 +91,16 @@ public class ObjectDataTests
         var data = new ObjectData(CreateDefaultAttributes());
 
         data.Update("HiHi", "120.0");
-        data.ApplyPatches();
 
         Assert.That(data["HiHi"], Is.EqualTo(120.0));
     }
 
     [Test]
-    public void Update_NonExistingAttribute_DoesNothing()
+    public void Update_NonExistingAttribute_ThrowsArgumentException()
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        data.Update("NewAttr", "Value123");
-        data.ApplyPatches();
-
-        Assert.That(data["NewAttr"], Is.Null);
+        Assert.Throws<ArgumentException>(() => data.Update("NewAttr", "Value123"));
     }
 
     [Test]
@@ -122,7 +117,6 @@ public class ObjectDataTests
         var data = new ObjectData(CreateDefaultAttributes());
 
         data.Replace("Centrifugal", "Positive Displacement", "Description");
-        data.ApplyPatches();
 
         Assert.That(data["Description"], Is.EqualTo("Positive Displacement Pump"));
     }
@@ -133,7 +127,6 @@ public class ObjectDataTests
         var data = new ObjectData(CreateDefaultAttributes());
 
         data.Replace("CENTRIFUGAL", "Positive Displacement", "Description");
-        data.ApplyPatches();
 
         Assert.That(data["Description"], Is.EqualTo("Positive Displacement Pump"));
     }
@@ -144,7 +137,6 @@ public class ObjectDataTests
         var data = new ObjectData(CreateDefaultAttributes());
 
         data.Replace("CENTRIFUGAL", "Positive Displacement", "Description", matchCase: true);
-        data.ApplyPatches();
 
         Assert.That(data["Description"], Is.EqualTo("Centrifugal Pump"));
     }
@@ -155,72 +147,7 @@ public class ObjectDataTests
         var data = new ObjectData(CreateDefaultAttributes());
 
         data.Replace("Centrifugal", "Positive Displacement", "Description", matchCase: true);
-        data.ApplyPatches();
 
         Assert.That(data["Description"], Is.EqualTo("Positive Displacement Pump"));
-    }
-
-    [Test]
-    public void Diffs_ReturnsFormattedStrings()
-    {
-        var data = new ObjectData(CreateDefaultAttributes());
-
-        data.Update("Description", "New Pump");
-        data.Update("HiHi", "150.0");
-
-        var diffs = data.Diffs().ToList();
-
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(diffs, Has.Count.EqualTo(2));
-            Assert.That(diffs[0], Is.EqualTo($"{TagName}: 'Description' \"Centrifugal Pump\" -> \"New Pump\""));
-            Assert.That(diffs[1], Is.EqualTo($"{TagName}: 'HiHi' \"100\" -> \"150\""));
-        }
-    }
-
-    [Test]
-    public void Diffs_ReplaceNoMatch_ShouldNotCreateDiffs()
-    {
-        var data = new ObjectData(CreateDefaultAttributes());
-        data.Replace("NonExistent", "Replacement");
-
-        var diffs = data.Diffs().ToList();
-
-        Assert.That(diffs, Is.Empty, "Should not have diffs if no values were changed.");
-    }
-
-    [Test]
-    public void Diffs_ReplacePartialMatch_ShouldOnlyDiffChangedAttributes()
-    {
-        var data = new ObjectData(CreateDefaultAttributes());
-        data.Replace("Centrifugal", "Positive");
-
-        var diffs = data.Diffs().ToList();
-
-        Assert.That(diffs, Has.Count.EqualTo(1));
-        Assert.That(diffs[0], Does.Contain("'Description'"));
-    }
-
-    [Test]
-    public void Diffs_UpdateSameValue_ShouldNotCreateDiffs()
-    {
-        var data = new ObjectData(CreateDefaultAttributes());
-        data.Update("Description", "Centrifugal Pump");
-
-        var diffs = data.Diffs().ToList();
-
-        Assert.That(diffs, Is.Empty, "Should not have diffs if the value is the same.");
-    }
-
-    [Test]
-    public void ApplyPatches_ClearsPatches()
-    {
-        var data = new ObjectData(CreateDefaultAttributes());
-
-        data.Update("Description", "New Pump");
-        Assert.That(data.Diffs(), Is.Not.Empty);
-
-        data.ApplyPatches();
-        Assert.That(data.Diffs(), Is.Empty);
     }
 }

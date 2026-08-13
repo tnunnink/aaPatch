@@ -35,9 +35,6 @@
         <None Update="PatchCommandTests.ExecuteAsync_OutputFileSpecified_HasVerifiedOutput.verified.txt">
           <DependentUpon>PatchCommandTests.cs</DependentUpon>
         </None>
-        <None Update="PatchCommandTests.ExecuteAsync_InputFileSpecified_HasVerifiedOutput.verified.txt">
-          <DependentUpon>PatchCommandTests.cs</DependentUpon>
-        </None>
         <None Update="PatchCommandTests.ExecuteAsync_InputAndOutputFileSpecified_HasVerifiedOutput.verified.txt">
           <DependentUpon>PatchCommandTests.cs</DependentUpon>
         </None>
@@ -49,6 +46,9 @@
         </None>
         <None Update="InfoCommandTests.ExecuteAsync_PrintsInfoText.verified.txt">
           <DependentUpon>InfoCommandTests.cs</DependentUpon>
+        </None>
+        <None Update="PatchCommandTests.ExecuteAsync_InputFileSpecified_HasVerifiedOutput.verified.txt">
+          <DependentUpon>PatchCommandTests.cs</DependentUpon>
         </None>
     </ItemGroup>
 

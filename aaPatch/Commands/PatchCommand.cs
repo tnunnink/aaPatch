@@ -44,13 +44,6 @@ public partial class PatchCommand : ICommand
     public IReadOnlyList<string> Patches { get; set; } = [];
 
     /// <summary>
-    /// Gets or sets a value indicating whether to preview the changes without applying them.
-    /// If set to true, the command simulates the modifications and displays the potential outcome.
-    /// </summary>
-    [CommandOption("preview", Description = "Preview changes without applying them.")]
-    public bool Preview { get; set; }
-
-    /// <summary>
     /// Gets or sets a value indicating whether to perform case-sensitive matching for find-replace operations.
     /// Default is false (case-insensitive).
     /// </summary>
@@ -75,24 +68,13 @@ public partial class PatchCommand : ICommand
             var objects = GalaxyDump.Read(csv).ToList();
 
             var patches = objects
-                .Where(IsMatch)
+                .Where(x => x.IsMatch(Filter))
                 .Select(GeneratePatch)
                 .ToList();
 
-            if (Preview)
-            {
-                // Preview all changes by printing to console and return without applying.
-                var diffs = patches.SelectMany(x => x.Diffs()).ToList();
-                diffs.ForEach(d => console.Error.WriteLine(d));
-                return;
-            }
-
-            // If we get here, then we need to apply the patches that were generated.
-            patches.ForEach(p => p.ApplyPatches());
-
             var write = OutputFile is null
-                ? console.Output.WriteAsync(GalaxyDump.Write(objects))
-                : File.WriteAllTextAsync(OutputFile, GalaxyDump.Write(objects), cancellation);
+                ? console.Output.WriteAsync(GalaxyDump.Write(patches))
+                : File.WriteAllTextAsync(OutputFile, GalaxyDump.Write(patches), cancellation);
 
             await write;
         }
@@ -145,39 +127,5 @@ public partial class PatchCommand : ICommand
         }
 
         return target;
-    }
-
-    /// <summary>
-    /// Determines whether the specified target object matches the given templates and filters.
-    /// </summary>
-    /// <param name="target">The target object to evaluate against the templates and filters.</param>
-    /// <returns>True if the target object matches the specified criteria; otherwise, false.</returns>
-    private bool IsMatch(ObjectData target)
-    {
-        if (string.IsNullOrEmpty(Filter))
-            return true;
-
-        var index = Filter.IndexOf('=');
-        var attributeName = index > 0 ? Filter[..index] : "TagName";
-        var pattern = index > 0 ? Filter[(index + 1)..] : Filter;
-        var value = target[attributeName]?.ToString() ?? string.Empty;
-        return MatchesFilter(value, pattern);
-    }
-
-    /// <summary>
-    /// Determines if a given value matches a specified pattern.
-    /// Supports patterns with wildcards (e.g., '*') by converting them into regular expressions.
-    /// </summary>
-    /// <param name="value">The value to evaluate against the pattern.</param>
-    /// <param name="pattern">The pattern to match the value against. Can include wildcards ('*'). Null or empty patterns count as a match for all values.</param>
-    /// <returns>True if the value matches the pattern or if the pattern is null/empty; otherwise, false.</returns>
-    private static bool MatchesFilter(string value, string? pattern)
-    {
-        if (string.IsNullOrEmpty(pattern))
-            return true;
-
-        var regex = $"^{Regex.Escape(pattern).Replace("\\*", ".*")}$";
-
-        return Regex.IsMatch(value, regex, RegexOptions.IgnoreCase);
     }
 }

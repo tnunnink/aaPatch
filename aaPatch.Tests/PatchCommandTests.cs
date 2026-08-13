@@ -1,6 +1,7 @@
 ﻿using aaPatch.Commands;
 
 namespace aaPatch.Tests;
+
 using CliFx;
 using CliFx.Infrastructure;
 
@@ -165,8 +166,8 @@ public class PatchCommandTests
     {
         using var console = new FakeInMemoryConsole();
         console.WriteInput(SimpleGalaxyDump);
-        // Using an invalid path characters or non-existent drive/deeply invalid path
-        var outputFile = @"Z:\NonExistentDir\output.csv"; 
+        // Using an invalid path character or non-existent drive/deeply invalid path
+        const string outputFile = @"Z:\NonExistentDir\output.csv";
 
         var command = new PatchCommand
         {
@@ -191,10 +192,10 @@ public class PatchCommandTests
         };
 
         await command.ExecuteAsync(console);
-        
+
         var output = console.ReadOutputString();
         Assert.That(output, Does.Contain("P_101,Centrifugal Pump,200")); // Patched
-        Assert.That(output, Does.Contain("V_201,Gate Valve,True"));      // Not patched but still in output
+        Assert.That(output, Does.Not.Contain("V_201,Gate Valve,True")); // Filtered out
     }
 
     [Test]
@@ -212,28 +213,6 @@ public class PatchCommandTests
         await command.ExecuteAsync(console);
 
         await Verify(console.ReadOutputString());
-    }
-
-    [Test]
-    public async Task ExecuteAsync_PreviewMode_LogsToErrorStream()
-    {
-        using var console = new FakeInMemoryConsole();
-        console.WriteInput(SimpleGalaxyDump);
-
-        var command = new PatchCommand
-        {
-            Patches = ["Description=Updated"],
-            Preview = true
-        };
-
-        await command.ExecuteAsync(console);
-
-        var output = console.ReadOutputString();
-        var error = console.ReadErrorString();
-
-        Assert.That(output, Is.Empty);
-        Assert.That(error, Does.Contain("P_101: 'Description' \"Centrifugal Pump\" -> \"Updated\""));
-        Assert.That(error, Does.Contain("V_201: 'Description' \"Gate Valve\" -> \"Updated\""));
     }
 
     [Test]

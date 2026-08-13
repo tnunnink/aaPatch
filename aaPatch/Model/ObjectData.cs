@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace aaPatch.Model;
 
 /// <summary>
@@ -22,13 +24,6 @@ public class ObjectData
     /// Stores the key-value pairs of attributes associated with this object data instance.
     /// </summary>
     private readonly Dictionary<string, AttributeData> _attributes;
-
-    /// <summary>
-    /// Stores a collection of key/value pairs that represent modified attributes or patches
-    /// applied to the object data. This dictionary is used to track changes or overrides
-    /// to the original attributes of the object.
-    /// </summary>
-    private readonly List<AttributeData> _patches = [];
 
     /// <summary>
     /// Represents an exported object instance from a galaxy dump file. This record contains the parent template name and
@@ -76,6 +71,40 @@ public class ObjectData
     }
 
     /// <summary>
+    /// Determines whether the object matches the specified filter condition.
+    /// The filter is represented as a string in the format "attributeName=pattern", where the
+    /// attributeName is optional and defaults to the tag name if omitted. Pattern supports wildcards
+    /// with '*' to match multiple characters.
+    /// </summary>
+    /// <param name="filter">
+    /// A string representing the filter condition. If the filter is null or empty, this method
+    /// returns true. Otherwise, the filter applies to the object's attributes or tag name based
+    /// on the attributeName and pattern.
+    /// </param>
+    /// <returns>
+    /// Returns true if the object's attributes or tag name match the specified filter
+    /// condition; otherwise, false.
+    /// </returns>
+    public bool IsMatch(string? filter)
+    {
+        if (string.IsNullOrEmpty(filter))
+            return true;
+
+        var index = filter.IndexOf('=');
+        var attributeName = index > 0 ? filter[..index] : TagNameKey;
+        var pattern = index > 0 ? filter[(index + 1)..] : filter;
+        var value = this[attributeName]?.ToString() ?? string.Empty;
+        return MatchesFilter(value, pattern);
+
+        bool MatchesFilter(string v, string? p)
+        {
+            if (string.IsNullOrEmpty(p)) return true;
+            var regex = $"^{Regex.Escape(p).Replace("\\*", ".*")}$";
+            return Regex.IsMatch(v, regex, RegexOptions.IgnoreCase);
+        }
+    }
+
+    /// <summary>
     /// Adds or updates an attribute with the specified value for this object data instance.
     /// </summary>
     /// <param name="name">The name of the attribute to patch. Cannot be null, whitespace, or the TagName key.</param>
@@ -89,14 +118,10 @@ public class ObjectData
         if (StringComparer.OrdinalIgnoreCase.Equals(TagNameKey, name))
             throw new ArgumentException("Cannot modify the TagName attribute.", nameof(name));
 
-        if (_attributes.TryGetValue(name, out var attribute))
-        {
-            var patch = attribute.With(value);
-            if (!Equals(attribute.Value, patch.Value))
-            {
-                _patches.Add(patch);
-            }
-        }
+        if (!_attributes.TryGetValue(name, out var attribute))
+            throw new ArgumentException($"Attribute '{name}' does not exist in the object.", nameof(name));
+
+        _attributes[name] = attribute.With(value);
     }
 
     /// <summary>
@@ -118,58 +143,20 @@ public class ObjectData
             {
                 if (attribute.Name == TagNameKey) continue;
                 var value = attribute.Value?.ToString();
-                if (value is not null && value.Contains(find, comparison))
-                {
-                    _patches.Add(attribute.With(value.Replace(find, replace, comparison)));
-                }
+                if (value is null || !value.Contains(find, comparison)) continue;
+                _attributes[attribute.Name] = attribute.With(value.Replace(find, replace, comparison));
             }
 
             return;
         }
-
+        
         // Apply to specified attribute name
-        if (_attributes.TryGetValue(name, out var target) && target.Value is not null)
-        {
-            var value = target.Value.ToString();
-            if (value is not null && value.Contains(find, comparison))
-            {
-                _patches.Add(target.With(value.Replace(find, replace, comparison)));
-            }
-        }
-    }
-
-    /// <summary>
-    /// Generates a collection of formatted strings describing the changes (or "diffs") between the
-    /// current attribute values and their patched values for the associated object. This method
-    /// compares the original attributes with the patched values and creates a textual representation
-    /// highlighting the differences.
-    /// </summary>
-    /// <returns>
-    /// An enumerable collection of strings, where each string represents a diff in the format:
-    /// "TagName: 'AttributeName' "OriginalValue" -> "PatchedValue".
-    /// </returns>
-    public IEnumerable<string> Diffs()
-    {
-        return _patches.Select(p =>
-        {
-            var original = _attributes[p.Name];
-            return $"{TagName}: '{original.Name}' \"{original.Value}\" -> \"{p.Value}\"";
-        });
-    }
-
-    /// <summary>
-    /// Applies all pending modifications stored in the internal patch collection to the object's attributes.
-    /// Once invoked, the object's attributes are updated to reflect the changes contained in the patches.
-    /// The patch collection is used to temporarily store modifications and is applied to the object's state during this method's execution.
-    /// </summary>
-    public void ApplyPatches()
-    {
-        foreach (var patch in _patches)
-        {
-            _attributes[patch.Name] = patch;
-        }
-
-        _patches.Clear();
+        if (!_attributes.TryGetValue(name, out var target))
+            throw new ArgumentException($"Attribute '{name}' does not exist in the object.", nameof(name));
+        
+        var current = target.Value?.ToString();
+        if (current is null || !current.Contains(find, comparison)) return;
+        _attributes[target.Name] = target.With(current.Replace(find, replace, comparison));
     }
 
     /// <summary>
