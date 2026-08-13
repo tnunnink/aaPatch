@@ -6,10 +6,16 @@ namespace aaPatch.Tests;
 public class AttributeDataTests
 {
     [Test]
+    public void Constructor_InvalidHeader_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(() => _ = new AttributeData("", "value"));
+    }
+
+    [Test]
     public void Constructor_SimpleString_ParsesCorrectly()
     {
         var attr = new AttributeData("Description", "Pump");
-        
+
         using (Assert.EnterMultipleScope())
         {
             Assert.That(attr.Name, Is.EqualTo("Description"));
@@ -24,7 +30,7 @@ public class AttributeDataTests
     public void Constructor_MxDouble_ParsesCorrectly()
     {
         var attr = new AttributeData("Level(MxDouble)", "55.5");
-        
+
         using (Assert.EnterMultipleScope())
         {
             Assert.That(attr.Name, Is.EqualTo("Level"));
@@ -39,7 +45,7 @@ public class AttributeDataTests
     public void Constructor_MxBoolean_ParsesCorrectly()
     {
         var attr = new AttributeData("Status(MxBoolean)", "true");
-        
+
         using (Assert.EnterMultipleScope())
         {
             Assert.That(attr.Name, Is.EqualTo("Status"));
@@ -54,7 +60,7 @@ public class AttributeDataTests
     public void Constructor_MxInteger_ParsesCorrectly()
     {
         var attr = new AttributeData("Count(MxInteger)", "10");
-        
+
         using (Assert.EnterMultipleScope())
         {
             Assert.That(attr.Name, Is.EqualTo("Count"));
@@ -69,7 +75,7 @@ public class AttributeDataTests
     public void Constructor_MxFloat_ParsesCorrectly()
     {
         var attr = new AttributeData("Value(MxFloat)", "1.5");
-        
+
         using (Assert.EnterMultipleScope())
         {
             Assert.That(attr.Name, Is.EqualTo("Value"));
@@ -84,7 +90,7 @@ public class AttributeDataTests
     public void Constructor_UnknownType_DefaultsToString()
     {
         var attr = new AttributeData("Something(UnknownType)", "value");
-        
+
         using (Assert.EnterMultipleScope())
         {
             Assert.That(attr.Name, Is.EqualTo("Something"));
@@ -99,7 +105,7 @@ public class AttributeDataTests
     public void Constructor_TemplateIdentity_SetsIsIdentityTrue()
     {
         var attr = new AttributeData("Template", "$Pump");
-        
+
         using (Assert.EnterMultipleScope())
         {
             Assert.That(attr.Name, Is.EqualTo("Template"));
@@ -111,7 +117,7 @@ public class AttributeDataTests
     public void Constructor_TagNameIdentity_SetsIsIdentityTrue()
     {
         var attr = new AttributeData("TagName", "P_101");
-        
+
         using (Assert.EnterMultipleScope())
         {
             Assert.That(attr.Name, Is.EqualTo("TagName"));
@@ -152,6 +158,7 @@ public class AttributeDataTests
             Assert.That(updated.Header, Is.EqualTo(original.Header));
             Assert.That(updated.Value, Is.EqualTo(60.0));
         }
+
         Assert.AreNotSame(original, updated);
     }
 
@@ -174,11 +181,4 @@ public class AttributeDataTests
         var attr = new AttributeData("Description", null);
         Assert.That(attr.ToString(), Is.EqualTo(string.Empty));
     }
-
-    [Test]
-    public void Constructor_InvalidHeader_ThrowsArgumentException()
-    {
-        Assert.Throws<ArgumentException>(() => _ = new AttributeData("", "value"));
-    }
-
 }

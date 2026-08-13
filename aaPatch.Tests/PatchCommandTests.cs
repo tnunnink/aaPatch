@@ -2,6 +2,8 @@
 
 namespace aaPatch.Tests;
 
+using System.Text.Json;
+
 using CliFx;
 using CliFx.Infrastructure;
 
@@ -489,5 +491,49 @@ public class PatchCommandTests
 
         var ex = Assert.ThrowsAsync<CommandException>(async () => await command.ExecuteAsync(console));
         Assert.That(ex.Message, Does.Contain("Unsupported output format 'invalid'"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_Additions_AppliedToFilteredObjects()
+    {
+        using var console = new FakeInMemoryConsole();
+        var cmd = new PatchCommand
+        {
+            InputFile = null,
+            Format = "json",
+            Filter = "TagName=P101",
+            Additions = ["source=AVEVA"]
+        };
+
+        var csv = ":TEMPLATE=$Pump\n:Tagname,Description\nP101,Pump 1\nP102,Pump 2";
+        console.WriteInput(csv);
+
+        await cmd.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        var json = JsonDocument.Parse(output);
+        var array = json.RootElement.EnumerateArray().ToList();
+
+        Assert.That(array, Has.Count.EqualTo(1));
+        Assert.That(array[0].GetProperty("TagName").GetString(), Is.EqualTo("P101"));
+        Assert.That(array[0].GetProperty("source").GetString(), Is.EqualTo("AVEVA"));
+    }
+
+    [Test]
+    public void ExecuteAsync_Additions_AvevaFormat_Throws()
+    {
+        using var console = new FakeInMemoryConsole();
+        var cmd = new PatchCommand
+        {
+            InputFile = null,
+            Format = "aveva",
+            Additions = ["source=AVEVA"]
+        };
+
+        var csv = ":TEMPLATE=$Pump\n:Tagname\nP101";
+        console.WriteInput(csv);
+
+        var ex = Assert.ThrowsAsync<CommandException>(async () => await cmd.ExecuteAsync(console));
+        Assert.That(ex.Message, Does.Contain("Added attributes are currently supported only with JSON output"));
     }
 }

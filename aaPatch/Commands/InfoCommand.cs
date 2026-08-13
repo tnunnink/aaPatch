@@ -43,6 +43,14 @@ public partial class InfoCommand : ICommand
             Example: -f "Pump*" (Matches TagName starting with Pump)
             Example: -f "Template=$Pump" (Matches objects where Template is $Pump)
             Example: -f "Area=Area1" (Matches objects where Area is Area1)
+
+            Static Output Fields:
+            ---------------------
+            Use -a or --add to append static fields to every filtered output object.
+            Format: Attribute=Value
+            Example: -a "source=AVEVA" -a "enabled=true"
+            Added fields are available for selection and aliasing.
+            Primitive types (boolean, number, null) are preserved in JSON output.
             """;
 
         console.Output.WriteLine(infoText);

@@ -148,6 +148,46 @@ public class ObjectData
     }
 
     /// <summary>
+    /// Adds new attributes to the current object instance. If any of the provided attribute names
+    /// already exist in the object, an exception is thrown to prevent duplicates.
+    /// </summary>
+    /// <param name="additions">
+    /// A collection of attribute strings in the format "name=value", where "name" specifies the
+    /// attribute name and "value" specifies its corresponding value. Attribute names must not
+    /// be null, empty, or whitespace.
+    /// </param>
+    /// <returns>
+    /// The current <see cref="ObjectData"/> instance with the new attributes added.
+    /// </returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when an attribute with the same name already exists or if the attribute name
+    /// is null, empty, or whitespace.
+    /// </exception>
+    public ObjectData Add(params string[] additions)
+    {
+        foreach (var addition in additions)
+        {
+            var index = addition.IndexOf('=');
+            if (index <= 0)
+                throw new ArgumentException($"Invalid addition format '{addition}'. Expected 'Attribute=Value'.");
+
+            var name = addition[..index].Trim();
+
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Attribute name cannot be null or whitespace.");
+
+            if (_attributes.ContainsKey(name))
+                throw new ArgumentException(
+                    $"Cannot add attribute '{name}' because it already exists. Use --patch to modify an existing attribute.");
+
+            var value = addition[(index + 1)..];
+            _attributes[name] = new AttributeData(name, value);
+        }
+
+        return this;
+    }
+
+    /// <summary>
     /// Replaces occurrences of a specified substring with a replacement string in the values of the object's attributes.
     /// The method can target all attributes or a specific attribute based on the provided name.
     /// </summary>

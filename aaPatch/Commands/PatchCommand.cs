@@ -52,6 +52,14 @@ public partial class PatchCommand : ICommand
     public IReadOnlyList<string> Selections { get; set; } = [];
 
     /// <summary>
+    /// Gets the collection of static attributes to add to each output object.
+    /// Format: 'Attribute=Value'.
+    /// </summary>
+    [CommandOption("add", 'a',
+        Description = "Add a static attribute to each output object using 'Attribute=Value'.")]
+    public IReadOnlyList<string> Additions { get; set; } = [];
+
+    /// <summary>
     /// Gets or sets a value indicating whether to perform case-sensitive matching for find-replace operations.
     /// Default is false (case-insensitive).
     /// </summary>
@@ -77,19 +85,23 @@ public partial class PatchCommand : ICommand
 
         try
         {
+            if (Additions.Count > 0 && !string.Equals(Format, "json", StringComparison.OrdinalIgnoreCase))
+                throw new CommandException("Added attributes are currently supported only with JSON output.");
+
             var csv = InputFile is null
                 ? await console.Input.ReadToEndAsync()
                 : await File.ReadAllTextAsync(InputFile, cancellation);
 
             var objects = GalaxyDump.Read(csv).ToList();
 
-            var output = objects
+            var outputs = objects
                 .Where(x => x.Matches(Filter))
                 .Select(GeneratePatch)
+                .Select(x => x.Add([.. Additions]))
                 .Select(x => Selections.Count > 0 ? x.Project(Selections) : x)
                 .ToList();
 
-            var content = output.Serialize(Format);
+            var content = outputs.Serialize(Format);
 
             var write = OutputFile is null
                 ? console.Output.WriteAsync(content)
@@ -97,7 +109,7 @@ public partial class PatchCommand : ICommand
 
             await write;
         }
-        catch (Exception e)
+        catch (Exception e) when (e is not CommandException)
         {
             throw new CommandException($"Patch failed with error '{e.Message}'", innerException: e);
         }

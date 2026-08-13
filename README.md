@@ -9,15 +9,16 @@ and automated modifications.
 The command follows a deterministic pipeline:
 
 ``` text
-read → filter → patch → select → format → write
+read → filter → patch → add → select → format → write
 ```
 
 1. **Read**: Loads AVEVA Galaxy dump CSV (from file or stdin).
 2. **Filter**: Restricts which objects proceed through the pipeline.
 3. **Patch**: Applies optional modifications to filtered objects.
-4. **Select**: Controls the final fields and applies aliases.
-5. **Format**: Emits the result as AVEVA (CSV) or JSON.
-6. **Write**: Outputs the result (to file or stdout).
+4. **Add**: Appends static fields to every filtered output object.
+5. **Select**: Controls the final fields and applies aliases.
+6. **Format**: Emits the result as AVEVA (CSV) or JSON.
+7. **Write**: Outputs the result (to file or stdout).
 
 ## Features
 
@@ -25,6 +26,7 @@ read → filter → patch → select → format → write
 - **Bulk Attribute Updates**: Update object attributes across many objects simultaneously.
 - **Find and Replace**: Perform targeted string replacements within specific attributes or globally.
 - **Advanced Filtering**: Restrict output by Template, TagName, or any attribute using wildcards.
+- **Static Output Fields**: Append new static attributes to each object for transformations.
 - **Selection and Aliasing**: Project specific fields and rename them in the output.
 - **Multiple Formats**: Support for native AVEVA CSV and structured JSON output.
 - **Robust Galaxy Parsing**: Case-insensitive template detection with support for CRLF and LF line endings.
@@ -57,6 +59,7 @@ aapatch [options]
 | `--output`     | `-o`      | Path to the output CSV file. If omitted, writes to stdout.                                         |
 | `--filter`     | `-f`      | Filter which objects are included in the output. Default attribute is TagName. Supports wildcards. |
 | `--patch`      | `-p`      | Patch to apply to filtered objects. Can be used multiple times.                                    |
+| `--add`        | `-a`      | Add a static attribute to each output object. Can be used multiple times.                          |
 | `--select`     | `-s`      | Select and optionally alias fields for output. Can be used multiple times.                         |
 | `--format`     |           | Output format: `aveva` (default) or `json`.                                                        |
 | `--match-case` | `-m`      | Perform case-sensitive matching for find-replace operations.                                       |
@@ -77,6 +80,28 @@ matching:
 ```bash
 aapatch -i Export.csv -p "Description:Pump=Motor" --match-case
 ```
+
+### Static Output Fields
+
+The `--add` or `-a` option appends new static fields to every object that passes the filter. This is useful for
+transforming data for other systems like Ignition.
+
+| Type              | Syntax            | Description                                               | Example               |
+|:------------------|:------------------|:----------------------------------------------------------|:----------------------|
+| **Static Adding** | `Attribute=Value` | Adds a new attribute with the given value to each object. | `-a "source=AVEVA"` |
+
+Added fields are available for selection and aliasing. Primitive types are preserved in JSON output:
+
+| CLI Value       | JSON Type |
+|:----------------|:----------|
+| `true`/`false`  | Boolean   |
+| integer         | Number    |
+| decimal         | Number    |
+| `null`          | Null      |
+| `"123"`         | String    |
+| other           | String    |
+
+*Note: `--add` currently supports JSON output only. Duplicates and collisions with existing fields are rejected.*
 
 ### Selection and Aliases
 
@@ -139,15 +164,23 @@ Rename the description field and only include identity fields:
 aapatch -i Export.csv -s Template -s TagName -s Description=displayName
 ```
 
-### 7. JSON Output
+### 7. JSON Output with Additions
 
-Generate a JSON representation of specific attributes:
+Generate a JSON representation for Ignition import with static fields and aliasing:
 
 ```bash
-aapatch -i Export.csv -f "$Pump*" -s TagName=id -s Area --format json
+aaPatch \
+  --input galaxy.csv \
+  --format json \
+  --add 'source=AVEVA' \
+  --add 'provider=default' \
+  --add 'enabled=true' \
+  --select TagName=name \
+  --select source=system \
+  --select enabled
 ```
 
-### 5. Pipelining
+### 8. Pipelining
 
 Use `aaPatch` in a command-line pipeline:
 
