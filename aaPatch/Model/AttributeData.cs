@@ -117,7 +117,7 @@ public class AttributeData
     public AttributeData Rename(string name)
     {
         var current = ParseName();
-        var header = Header.Replace(current, name);
+        var header = Header.Replace(current, name.Trim());
         return new AttributeData(header, _value);
     }
 
