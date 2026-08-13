@@ -44,13 +44,6 @@ public partial class PatchCommand : ICommand
     public IReadOnlyList<string> Patches { get; set; } = [];
 
     /// <summary>
-    /// Gets the template name filter pattern used to select which objects to patch.
-    /// Supports wildcard patterns (e.g., \*). If not specified, all templates are matched.
-    /// </summary>
-    [CommandOption("templates", 't', Description = $"Templates to apply patch to. {AdditionInfoMessage}")]
-    public IReadOnlyList<string> Templates { get; set; } = [];
-
-    /// <summary>
     /// Gets or sets a value indicating whether to preview the changes without applying them.
     /// If set to true, the command simulates the modifications and displays the potential outcome.
     /// </summary>
@@ -161,9 +154,6 @@ public partial class PatchCommand : ICommand
     /// <returns>True if the target object matches the specified criteria; otherwise, false.</returns>
     private bool IsMatch(ObjectData target)
     {
-        if (Templates.Count > 0 && Templates.All(t => !MatchesFilter(target.Template, t)))
-            return false;
-
         if (string.IsNullOrEmpty(Filter))
             return true;
 
