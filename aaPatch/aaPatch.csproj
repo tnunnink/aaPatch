@@ -32,8 +32,4 @@
         <PackageReference Include="Spectre.Console" Version="0.55.1" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Formats\" />
-    </ItemGroup>
-
 </Project>
