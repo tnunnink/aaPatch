@@ -123,8 +123,7 @@ public class ObjectData
                     $"Duplicate attribute name '{attribute.Name}' in projection. Attribute names must be unique after aliasing.",
                     nameof(selections));
         }
-
-
+        
         return new ObjectData(attributes.Values);
     }
 

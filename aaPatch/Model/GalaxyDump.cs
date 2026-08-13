@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Text.RegularExpressions;
 using CsvHelper;
 using CsvHelper.Configuration;
 
@@ -22,6 +23,14 @@ public static class GalaxyDump
     private const string TagNameKey = ":Tagname";
 
     /// <summary>
+    /// Defines a regular expression used to separate object data segments by templates within a text structure.
+    /// This separator identifies segments starting with the predefined template key and processes them in a case-insensitive, multiline context.
+    /// </summary>
+    private static readonly Regex TemplateSeparator = new(
+        $"^{Regex.Escape(TemplateKey)}",
+        RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+    /// <summary>
     /// Reads a text representation of object data organized by templates and converts it into a collection of <see cref="ObjectData"/> instances.
     /// Each segment of the text must correspond to a template with associated object data structured in a tabular format.
     /// </summary>
@@ -33,16 +42,14 @@ public static class GalaxyDump
         if (string.IsNullOrWhiteSpace(text))
             throw new ArgumentException("The text parameter cannot be null or empty.", nameof(text));
 
-        return text.Split(TemplateKey, StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => s.Trim())
-            .SelectMany(ReadTemplate);
+        var templates = TemplateSeparator.Split(text)
+            .Select(segment => segment.Trim())
+            .Where(segment => segment.StartsWith('$'));
+
+        return templates.SelectMany(ReadTemplate);
 
         IEnumerable<ObjectData> ReadTemplate(string segment)
         {
-            // Skip anything that doesn't start with the template name character (typically the first metadata line the CSV)
-            if (!segment.StartsWith('$'))
-                yield break;
-            
             // We know that each segment needs at least 3 lines (template identifier, attribute header, and instance(s) row)
             var lines = segment.Split(["\r\n", "\n"], StringSplitOptions.None);
 
