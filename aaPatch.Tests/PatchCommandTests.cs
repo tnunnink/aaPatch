@@ -28,7 +28,7 @@ public class PatchCommandTests
         var command = new PatchCommand
         {
             Patches = ["Description=Updated Pump"],
-            Filter = "template=$Pump"
+            Filters = ["template=$Pump"]
         };
 
         await command.ExecuteAsync(console);
@@ -62,7 +62,7 @@ public class PatchCommandTests
         {
             InputFile = inputFile,
             Patches = ["Description=File Updated"],
-            Filter = "Template=$Pump"
+            Filters = ["Template=$Pump"]
         };
 
         await command.ExecuteAsync(console);
@@ -187,7 +187,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filter = "Description=Centrifugal*",
+            Filters = ["Description=Centrifugal*"],
             Patches = ["HiHi=200.0"]
         };
 
@@ -276,7 +276,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filter = "Template=$Pump"
+            Filters = ["Template=$Pump"]
         };
 
         await command.ExecuteAsync(console);
@@ -296,7 +296,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filter = "P_101"
+            Filters = ["P_101"]
         };
 
         await command.ExecuteAsync(console);
@@ -315,7 +315,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filter = "NonExistent"
+            Filters = ["NonExistent"]
         };
 
         await command.ExecuteAsync(console);
@@ -379,18 +379,16 @@ public class PatchCommandTests
     }
 
     [Test]
-    public void ExecuteAsync_InvalidSelection_ThrowsCommandException()
+    public async Task ExecuteAsync_InvalidSelection_OutputIsEmpty()
     {
         using var console = new FakeInMemoryConsole();
         console.WriteInput(SimpleGalaxyDump);
+        var command = new PatchCommand { Selections = ["NonExistent"], Format = "json"};
 
-        var command = new PatchCommand
-        {
-            Selections = ["NonExistent"]
-        };
+        await command.ExecuteAsync(console);
 
-        var ex = Assert.ThrowsAsync<CommandException>(async () => await command.ExecuteAsync(console));
-        Assert.That(ex.Message, Does.Contain("Attribute 'NonExistent' does not exist"));
+        var output = console.ReadOutputString();
+        await VerifyJson(output);
     }
 
     [Test]
@@ -417,7 +415,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filter = "Template=$Pump",
+            Filters = ["Template=$Pump"],
             Selections = ["Template", "TagName", "HiHi"]
         };
 
@@ -525,7 +523,7 @@ public class PatchCommandTests
 
         await Verify(console.ReadOutputString());
     }
-    
+
     [Test]
     public async Task ExecuteAsync_AdditionsInJson_HasExpectedOutput()
     {

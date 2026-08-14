@@ -62,6 +62,9 @@
         <None Update="PatchCommandTests.ExecuteAsync_AdditionsInJson_HasExpectedOutput.verified.txt">
           <DependentUpon>PatchCommandTests.cs</DependentUpon>
         </None>
+        <None Update="PatchCommandTests.ExecuteAsync_InvalidSelection_OutputIsEmpty.verified.txt">
+          <DependentUpon>PatchCommandTests.cs</DependentUpon>
+        </None>
     </ItemGroup>
 
     <ItemGroup>

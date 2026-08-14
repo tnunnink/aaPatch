@@ -50,11 +50,13 @@ public class ObjectDataTests
     }
 
     [Test]
-    public void Indexer_NonExistingAttribute_ThrowsException()
+    public void Indexer_NonExistingAttribute_ReturnsNull()
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        Assert.Throws<ArgumentException>(() => _ = data["NonExistent"]);
+        var value = data["NonExistent"];
+
+        Assert.That(value, Is.Null);
     }
 
     [Test]
@@ -82,11 +84,13 @@ public class ObjectDataTests
     }
 
     [Test]
-    public void Apply_NonExistingAttribute_ThrowsArgumentException()
+    public void Apply_NonExistingAttribute_DoesNothing()
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        Assert.Throws<ArgumentException>(() => data.Apply("NewAttr=Value123"));
+        data.Apply("NewAttr=Value123");
+
+        Assert.That(data["NewAttr"], Is.Null);
     }
 
     [Test]
@@ -241,13 +245,13 @@ public class ObjectDataTests
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        var projected = data.Project(["Description=Desc"]);
+        var projected = data.Project("Description=Desc");
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(projected, Has.Count.EqualTo(1));
             Assert.That(projected["Desc"], Is.EqualTo("Centrifugal Pump"));
-            Assert.Throws<ArgumentException>(() => _ = projected["Description"]);
+            Assert.That(projected["Description"], Is.Null);
         }
     }
 
@@ -292,11 +296,13 @@ public class ObjectDataTests
     }
 
     [Test]
-    public void Project_NonExistentAttribute_ThrowsArgumentException()
+    public void Project_NonExistentAttribute_ReturnsEmptyResult()
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        Assert.Throws<ArgumentException>(() => data.Project(["NonExistent"]));
+        var result = data.Project("NonExistent");
+        
+        Assert.That(result, Is.Empty);
     }
 
     [Test]
@@ -308,23 +314,12 @@ public class ObjectDataTests
     }
 
     [Test]
-    public void Project_InvalidSelectionStrings_ThrowsArgumentException()
-    {
-        var data = new ObjectData(CreateDefaultAttributes());
-
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.Throws<ArgumentException>(() => data.Project([""]));
-            Assert.Throws<ArgumentException>(() => data.Project(["   "]));
-            Assert.Throws<ArgumentException>(() => data.Project([null!]));
-        }
-    }
-
-    [Test]
     public void Project_EmptyOriginalName_ThrowsArgumentException()
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        Assert.Throws<ArgumentException>(() => data.Project(["=Alias"]));
+        var result = data.Project("=Alias");
+
+        Assert.That(result, Is.Empty);
     }
 }

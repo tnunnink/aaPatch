@@ -32,32 +32,30 @@ public partial class PatchCommand : ICommand
     /// Gets the filter pattern used to select which objects are included in the output.
     /// Supports wildcard patterns. If not specified, all objects are matched.
     /// </summary>
-    [CommandOption("filter", 'f', Description = $"Filter expression to filter objects. {AdditionInfoMessage}")]
-    public string? Filter { get; set; }
+    [CommandOption("filter", 'f', Description = $"Filter expressions to filter objects. {AdditionInfoMessage}")]
+    public IReadOnlyCollection<ObjectFilter> Filters { get; set; } = [];
 
     /// <summary>
     /// Gets the collection of patches to apply to matching objects.
     /// Supports two formats: 'Attribute=Value' for direct assignment, or 'Attribute:Find=Replace' for find-replace operations.
     /// </summary>
     [CommandOption("patch", 'p', Description = $"Patch expression to apply. {AdditionInfoMessage}")]
-    public IReadOnlyList<string> Patches { get; set; } = [];
+    public IReadOnlyList<ObjectPatch> Patches { get; set; } = [];
 
     /// <summary>
     /// Gets the collection of attribute names to include in the output.
     /// When specified, only the selected attributes will be included in the output objects.
     /// If not specified, all attributes are included.
     /// </summary>
-    [CommandOption("select", 's',
-        Description = $"Selection expression to specify attributes to include in output. {AdditionInfoMessage}")]
-    public IReadOnlyList<string> Selections { get; set; } = [];
+    [CommandOption("select", 's', Description = $"Specify attributes to include in output. {AdditionInfoMessage}")]
+    public IReadOnlyList<FieldSelection> Selections { get; set; } = [];
 
     /// <summary>
     /// Gets the collection of static attributes to add to each output object.
     /// Format: 'Attribute=Value'.
     /// </summary>
-    [CommandOption("add", 'a',
-        Description = "Add a static attribute to each output object using 'Attribute=Value'.")]
-    public IReadOnlyList<string> Additions { get; set; } = [];
+    [CommandOption("add", 'a', Description = $"Attributes to add to each output object. {AdditionInfoMessage}")]
+    public IReadOnlyList<AttributeData> Additions { get; set; } = [];
 
     /// <summary>
     /// Gets or sets a value indicating whether to perform case-sensitive matching for find-replace operations.
@@ -91,14 +89,14 @@ public partial class PatchCommand : ICommand
 
             var objects = GalaxyDump.Read(csv).ToList();
 
-            var outputs = objects
-                .Where(x => x.Matches(Filter))
-                .Select(x => x.Apply(Patches, MatchCase))
-                .Select(x => x.Add([.. Additions]))
-                .Select(x => Selections.Count > 0 ? x.Project(Selections) : x)
+            var output = objects
+                .Where(x => x.Match([.. Filters])) // Filter objects
+                .Select(x => x.Apply(Patches, MatchCase)) // Patch objects
+                .Select(x => x.Add([.. Additions])) // Add fields
+                .Select(x => Selections.Count > 0 ? x.Project([.. Selections]) : x) // Select fields
                 .ToList();
 
-            var content = outputs.Serialize(Format);
+            var content = output.Serialize(Format);
 
             var write = OutputFile is null
                 ? console.Output.WriteAsync(content)

@@ -68,7 +68,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// <param name="name">The name of the attribute to retrieve. Use "Template" or "TagName" to access their corresponding values,
     /// or the name of a specific object attribute.</param>
     /// <returns>The value of the requested attribute if it exists, or null if the attribute is not defined.</returns>
-    public object? this[string name] => GetAttribute(name).Value;
+    public object? this[string name] => TryGetAttribute(name, out var attribute) ? attribute.Value : null;
 
     /// <summary>
     /// Determines whether the object matches the specified filter condition.
@@ -76,7 +76,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// attributeName is optional and defaults to the tag name if omitted. Pattern supports wildcards
     /// with '*' to match multiple characters.
     /// </summary>
-    /// <param name="filter">
+    /// <param name="filters">
     /// A string representing the filter condition. If the filter is null or empty, this method
     /// returns true. Otherwise, the filter applies to the object's attributes or tag name based
     /// on the attributeName and pattern.
@@ -85,65 +85,58 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// Returns true if the object's attributes or tag name match the specified filter
     /// condition; otherwise, false.
     /// </returns>
-    public bool Matches(string? filter)
+    public bool Match(params ObjectFilter[] filters)
     {
-        if (string.IsNullOrEmpty(filter))
-            return true;
+        ArgumentNullException.ThrowIfNull(filters);
 
-        var index = filter.IndexOf('=');
-        var attributeName = index > 0 ? filter[..index] : nameof(TagName);
-        var pattern = index > 0 ? filter[(index + 1)..] : filter;
-        var value = this[attributeName]?.ToString() ?? string.Empty;
-        return MatchesFilter(value, pattern);
-
-        bool MatchesFilter(string v, string? p)
+        foreach (var filter in filters)
         {
-            if (string.IsNullOrEmpty(p)) return true;
-            var regex = $"^{Regex.Escape(p).Replace("\\*", ".*")}$";
-            return Regex.IsMatch(v, regex, RegexOptions.IgnoreCase);
+            if (!TryGetAttribute(filter.Attribute, out var attribute))
+                return false;
+
+            var value = attribute.Value?.ToString() ?? string.Empty;
+            var regex = $"^{Regex.Escape(filter.Pattern).Replace("\\*", ".*")}$";
+            var match = Regex.IsMatch(value, regex, RegexOptions.IgnoreCase);
+            if (!match) return false;
         }
+
+        return true;
     }
 
     /// <summary>
-    /// Projects a subset of attributes from the current object based on the provided selection criteria.
-    /// Creates a new instance of <see cref="ObjectData"/> that includes only the attributes specified
-    /// in the selections, with optional renaming of attributes if aliasing is provided in the selection string.
+    /// Applies a set of patches to the current object attributes based on the specified criteria.
     /// </summary>
-    /// <param name="selections">
-    /// A collection of strings representing attribute names to include in the projection. Each string can optionally
-    /// take the form "Name=Alias", where "Name" is the original attribute name and "Alias" is the desired name in the projection.
-    /// </param>
-    /// <returns>
-    /// A new <see cref="ObjectData"/> instance containing the specified subset of attributes, with any aliases applied as specified.
-    /// </returns>
-    /// <exception cref="ArgumentException">
-    /// Thrown when a specified attribute name is null, empty, or whitespace, or if the attribute does not exist in the current object.
-    /// </exception>
-    public ObjectData Project(IEnumerable<string> selections)
+    /// <param name="patches">A collection of patch strings to apply to the object's attributes.</param>
+    /// <param name="matchCase">A boolean indicating whether patch matching should be case-sensitive.</param>
+    /// <returns>The current <see cref="ObjectData"/> instance with the applied patches.</returns>
+    public ObjectData Apply(IEnumerable<ObjectPatch> patches, bool matchCase = false)
     {
-        ArgumentNullException.ThrowIfNull(selections);
-        var attributes = new Dictionary<string, AttributeData>(StringComparer.OrdinalIgnoreCase);
+        foreach (var patch in patches)
+            Apply(patch, matchCase);
 
-        foreach (var selection in selections)
-        {
-            if (string.IsNullOrWhiteSpace(selection))
-                throw new ArgumentException("Selection string cannot be null, empty, or whitespace.",
-                    nameof(selections));
+        return this;
+    }
 
-            var index = selection.IndexOf('=');
-            var name = index > 0 ? selection[..index] : selection;
-            var alias = index > 0 ? selection[(index + 1)..] : string.Empty;
+    /// <summary>
+    /// Applies the specified patch to the object data, modifying or updating its attributes
+    /// based on the patch's defined conditions. Supports case-sensitive and case-insensitive
+    /// operations based on the provided parameter.
+    /// </summary>
+    /// <param name="patch">An instance of <see cref="ObjectPatch"/> specifying the target attribute,
+    /// the search term, and the replacement value. Can define an attribute-specific operation
+    /// or a global search-and-replace operation across all attributes.</param>
+    /// <param name="matchCase">A boolean value indicating whether the string matching
+    /// should be case-sensitive. Defaults to false for case-insensitive operations.</param>
+    public void Apply(ObjectPatch patch, bool matchCase = false)
+    {
+        if (string.IsNullOrWhiteSpace(patch.Attribute) && !string.IsNullOrEmpty(patch.Find))
+            ReplaceAll(patch.Find, patch.Replacement, matchCase);
 
-            var attribute = GetAttribute(name);
-            attribute = string.IsNullOrWhiteSpace(alias) ? attribute.Duplicate() : attribute.Rename(alias);
+        if (!string.IsNullOrWhiteSpace(patch.Attribute) && !string.IsNullOrEmpty(patch.Find))
+            ReplaceFor(patch.Attribute, patch.Find, patch.Replacement, matchCase);
 
-            if (!attributes.TryAdd(attribute.Header, attribute))
-                throw new ArgumentException(
-                    $"Duplicate attribute name '{attribute.Header}' in projection. Attribute names must be unique after aliasing.",
-                    nameof(selections));
-        }
-
-        return new ObjectData(attributes.Values);
+        if (!string.IsNullOrWhiteSpace(patch.Attribute) && string.IsNullOrEmpty(patch.Find))
+            Update(patch.Attribute, patch.Replacement);
     }
 
     /// <summary>
@@ -162,103 +155,61 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// Thrown when an attribute with the same name already exists or if the attribute name
     /// is null, empty, or whitespace.
     /// </exception>
-    public ObjectData Add(params string[] additions)
+    public ObjectData Add(params AttributeData[] additions)
     {
         foreach (var addition in additions)
         {
-            var index = addition.IndexOf('=');
-            if (index <= 0)
-                throw new ArgumentException($"Invalid addition format '{addition}'. Expected 'Attribute=Value'.");
-
-            var name = addition[..index].Trim();
-
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Attribute name cannot be null or whitespace.");
-
-            if (_byHeader.ContainsKey(name))
+            if (_byHeader.ContainsKey(addition.Header))
                 throw new ArgumentException(
-                    $"Cannot add attribute '{name}' because it already exists. Use --patch to modify an existing attribute.");
+                    $"Cannot add attribute '{addition.Header}' because it already exists.\n" +
+                    $"Use --patch to modify an existing attribute.");
 
-            var value = addition[(index + 1)..];
-            var attribute = new AttributeData(name, value);
+            _attributes.Add(addition);
+            _byHeader[addition.Header] = addition;
 
-            _attributes.Add(attribute);
-            _byHeader[attribute.Header] = attribute;
-
-            if (!_byName.TryAdd(attribute.Name, [attribute]))
-                _byName[attribute.Name].Add(attribute);
+            if (!_byName.TryAdd(addition.Name, [addition]))
+                _byName[addition.Name].Add(addition);
         }
 
         return this;
     }
 
     /// <summary>
-    /// Applies a set of patches to the current object attributes based on the specified criteria.
+    /// Projects a subset of attributes from the current object based on the provided selection criteria.
+    /// Creates a new instance of <see cref="ObjectData"/> that includes only the attributes specified
+    /// in the selections, with optional renaming of attributes if aliasing is provided in the selection string.
     /// </summary>
-    /// <param name="patches">A collection of patch strings to apply to the object's attributes.</param>
-    /// <param name="matchCase">A boolean indicating whether patch matching should be case-sensitive.</param>
-    /// <returns>The current <see cref="ObjectData"/> instance with the applied patches.</returns>
-    public ObjectData Apply(IEnumerable<string> patches, bool matchCase = false)
-    {
-        foreach (var patch in patches)
-            Apply(patch, matchCase);
-
-        return this;
-    }
-
-    /// <summary>
-    /// Applies a modification to the object's attributes based on the provided patch string.
-    /// Supports three modes:
-    /// - Global Find and Replace (":Find=Replace"): Replaces all instances of a specified value
-    /// across attributes.
-    /// - Attribute-specific Find and Replace ("Attribute:Find=Replace"): Updates a specific attribute
-    /// by finding and replacing the specified value.
-    /// - Direct Assignment ("Attribute=Value"): Sets the specified attribute to a new value.
-    /// </summary>
-    /// <param name="patch">
-    /// The modification instruction to apply. The format is required to be one of the supported modes:
-    /// ":Find=Replace", "Attribute:Find=Replace", or "Attribute=Value".
+    /// <param name="selections">
+    /// A collection of strings representing attribute names to include in the projection. Each string can optionally
+    /// take the form "Name=Alias", where "Name" is the original attribute name and "Alias" is the desired name in the projection.
     /// </param>
-    /// <param name="matchCase">
-    /// A flag indicating whether the operation should be case-sensitive. Defaults to false.
-    /// </param>
+    /// <returns>
+    /// A new <see cref="ObjectData"/> instance containing the specified subset of attributes, with any aliases applied as specified.
+    /// </returns>
     /// <exception cref="ArgumentException">
-    /// Thrown when the format of the patch string is invalid or when attempting to modify a
-    /// non-existing attribute.
+    /// Thrown when a specified attribute name is null, empty, or whitespace, or if the attribute does not exist in the current object.
     /// </exception>
-    public void Apply(string patch, bool matchCase = false)
+    public ObjectData Project(params FieldSelection[] selections)
     {
-        if (patch.StartsWith(':') && patch.Contains('='))
+        ArgumentNullException.ThrowIfNull(selections);
+        var attributes = new Dictionary<string, AttributeData>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var selection in selections)
         {
-            // Global Find and Replace Mode -> ":Find=Replace"
-            var parts = patch[1..].Split('=', 2);
+            if (!TryGetAttribute(selection.Attribute, out var attribute))
+                continue;
 
-            if (parts.Length != 2)
-                throw new ArgumentException("Invalid global find-replace format. Expected ':Find=Replace'.");
+            attribute = string.IsNullOrWhiteSpace(selection.Alias)
+                ? attribute.Duplicate()
+                : attribute.Rename(selection.Alias);
 
-            ReplaceAll(parts[0], parts[1], matchCase);
-        }
-        else if (patch.Contains(':') && patch.IndexOf(':') < patch.IndexOf('='))
-        {
-            // Attribute-specific Find and Replace Mode -> "Attribute:Find=Replace"
-            var parts = patch.Split([':', '='], 3);
-
-            if (parts.Length != 3)
+            if (!attributes.TryAdd(attribute.Header, attribute))
                 throw new ArgumentException(
-                    "Invalid find-replace patch format. Expected 'Attribute:Find=Replace'.");
-
-            ReplaceFor(parts[0], parts[1], parts[2], matchCase);
+                    $"Duplicate attribute name '{attribute.Header}' in projection. Attribute names must be unique after aliasing.",
+                    nameof(selections));
         }
-        else
-        {
-            // Direct Assignment Mode -> "Attribute=Value"
-            var parts = patch.Split('=', 2);
 
-            if (parts.Length != 2)
-                throw new ArgumentException("Invalid patch format. Expected 'Attribute=Value'.");
-
-            Update(parts[0], parts[1]);
-        }
+        return new ObjectData(attributes.Values);
     }
 
     /// <summary>
@@ -295,7 +246,9 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(name));
 
-        var attribute = GetAttribute(name);
+        if (!TryGetAttribute(name, out var attribute))
+            return;
+
         attribute.Update(value);
     }
 
@@ -313,7 +266,9 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     private void ReplaceFor(string name, string find, string replace, bool matchCase = false)
     {
         var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-        var attribute = GetAttribute(name);
+
+        if (!TryGetAttribute(name, out var attribute))
+            return;
 
         var value = attribute.Value?.ToString();
         if (value is null || !value.Contains(find, comparison)) return;
@@ -361,43 +316,47 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     }
 
     /// <summary>
-    /// Retrieves an attribute based on the provided text, which can correspond
-    /// to either the header name or a non-unique attribute name in the object data.
+    /// Attempts to retrieve an attribute from the object by its name.
+    /// The method first looks for an exact match based on the header name,
+    /// and if that fails, attempts to find a match by name, provided the match is unique.
     /// </summary>
-    /// <param name="text">
-    /// The name of the attribute to retrieve. This can be either the exact header
-    /// name or a non-unique attribute name. Must not be null, empty, or whitespace.
+    /// <param name="name">The name of the attribute to retrieve.</param>
+    /// <param name="attribute">
+    /// When this method returns, contains the <see cref="AttributeData"/> associated with the specified name,
+    /// if it exists and is uniquely identifiable; otherwise, it is set to null.
     /// </param>
-    /// <returns>
-    /// An <see cref="AttributeData"/> instance representing the matching attribute.
-    /// </returns>
-    /// <exception cref="ArgumentException">
-    /// Thrown if the provided text is null, empty, only whitespace, or does not
-    /// match any attributes in the object.
-    /// </exception>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown if the provided text matches multiple attributes with the same name,
-    /// causing ambiguity.
-    /// </exception>
-    private AttributeData GetAttribute(string text)
+    /// <returns>true if the attribute is found and uniquely identifiable; otherwise, false.</returns>
+    /// <remarks>
+    /// Why do this? Because AVEVA attribute names are not unique.
+    /// You can have a Wizard option and an Attribute with the same name
+    /// but different CSV headers because they include type metadata.
+    /// Going to be lax with this tool to avoid throwing for every feature that needs an
+    /// attribute that does not exist (different templates have different schemas)
+    /// </remarks>
+    private bool TryGetAttribute(string name, out AttributeData attribute)
     {
-        if (string.IsNullOrWhiteSpace(text))
-            throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(text));
-
         // Explicit match to the header text first
-        if (_byHeader.TryGetValue(text, out var matched))
-            return matched;
+        if (_byHeader.TryGetValue(name, out var matched))
+        {
+            attribute = matched;
+            return true;
+        }
 
         // Otherwise try to get by name which might not be unique.
-        if (!_byName.TryGetValue(text, out var attributes))
-            throw new ArgumentException($"Attribute '{text}' does not exist in the object.", nameof(text));
+        if (!_byName.TryGetValue(name, out var attributes))
+        {
+            attribute = null!;
+            return false;
+        }
 
-        if (attributes.Count > 1)
-            throw new InvalidOperationException(
-                $"Attribute name '{text}' matches {attributes.Count} attributes and cannot be uniquely identified. " +
-                $"Use the full header name to specify the exact attribute.");
+        if (attributes.Count == 1)
+        {
+            attribute = attributes[0];
+            return true;
+        }
 
-        return attributes[0];
+        var headers = string.Join("\n", attributes.Select(a => $"  {a.Header}"));
+        throw new InvalidOperationException($"Attribute '{name}' is ambiguous. Use an exact header:\n{headers}");
     }
 }
 

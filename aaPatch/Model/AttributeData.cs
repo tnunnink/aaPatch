@@ -33,6 +33,25 @@ public class AttributeData
     private string? _value;
 
     /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="input"></param>
+    /// <exception cref="ArgumentException"></exception>
+    public AttributeData(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            throw new ArgumentException("Attribute expression can not be null, empty, or white space.", nameof(input));
+
+        var index = input.IndexOf('=');
+
+        if (index < 0)
+            throw new ArgumentException("");
+
+        Header = input[..index];
+        _value = input[(index + 1)..];
+    }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="AttributeData"/> class with the specified header and optional value.
     /// </summary>
     /// <remarks>
@@ -71,7 +90,7 @@ public class AttributeData
     /// preceding the first occurrence of a type definition enclosed in parentheses.
     /// If no such portion exists, the full header string is returned as the name.
     /// </remarks>
-    public string Name => ParseName();
+    public string Name => ParseName(Header);
 
     /// <summary>
     /// Gets the type information extracted from the header string.
@@ -84,7 +103,7 @@ public class AttributeData
     /// The property ensures that the type information is consistently resolved and is immutable
     /// after initialization.
     /// </remarks>
-    public Type Type => ParseType();
+    public Type Type => ParseType(Header);
 
     /// <summary>
     /// Retrieves the parsed value associated with the attribute data.
@@ -116,7 +135,7 @@ public class AttributeData
     /// <exception cref="ArgumentException">Thrown when the provided name parameter is null or empty.</exception>
     public AttributeData Rename(string name)
     {
-        var current = ParseName();
+        var current = ParseName(Header);
         var header = name + Header[current.Length..];
         return new AttributeData(header, _value);
     }
@@ -170,6 +189,16 @@ public class AttributeData
     }
 
     /// <summary>
+    /// Converts a string to an instance of the <see cref="AttributeData"/> class.
+    /// </summary>
+    /// <param name="text">The input string to be converted into an <see cref="AttributeData"/> instance. Cannot be null or empty.</param>
+    /// <returns>
+    /// A new instance of the <see cref="AttributeData"/> class initialized with the specified string.
+    /// </returns>
+    /// <exception cref="ArgumentException">Thrown when the input string is null, empty, or improperly formatted.</exception>
+    public static implicit operator AttributeData(string text) => new(text);
+
+    /// <summary>
     /// Extracts the attribute name from the header string.
     /// </summary>
     /// <remarks>
@@ -180,10 +209,10 @@ public class AttributeData
     /// <returns>
     /// A string representing the attribute name parsed from the header. Cannot be null or empty.
     /// </returns>
-    private string ParseName()
+    private static string ParseName(string input)
     {
-        var typeStart = Header.IndexOf('(');
-        return typeStart > 0 ? Header[..typeStart] : Header;
+        var typeStart = input.IndexOf('(');
+        return typeStart > 0 ? input[..typeStart] : input;
     }
 
     /// <summary>
@@ -198,10 +227,10 @@ public class AttributeData
     /// A <see cref="Type"/> that corresponds to the type information extracted from the header.
     /// Returns <see cref="string"/> if no type information is specified.
     /// </returns>
-    private Type ParseType()
+    private static Type ParseType(string input)
     {
-        var typeStart = Header.IndexOf('(') + 1;
-        var typeName = typeStart > 0 ? Header[typeStart..].TrimEnd(')') : string.Empty;
+        var typeStart = input.IndexOf('(') + 1;
+        var typeName = typeStart > 0 ? input[typeStart..].TrimEnd(')') : string.Empty;
 
         return typeName switch
         {
@@ -234,7 +263,7 @@ public class AttributeData
         if (string.IsNullOrWhiteSpace(_value))
             return null;
 
-        var type = ParseType();
+        var type = ParseType(Header);
 
         return type switch
         {
