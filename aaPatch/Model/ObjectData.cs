@@ -213,6 +213,25 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     }
 
     /// <summary>
+    /// Checks if the object contains all specified attributes.
+    /// </summary>
+    /// <param name="attributes">An array of attribute names to check for existence.</param>
+    /// <returns>True if all specified attributes exist; otherwise, false.</returns>
+    public bool Has(IReadOnlyCollection<string> attributes)
+    {
+        if (attributes.Count == 0)
+            return true;
+
+        foreach (var attribute in attributes)
+        {
+            if (!TryGetAttribute(attribute, out _))
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Returns a string representation of the object data by concatenating the values
     /// of all attributes, separated by commas.
     /// </summary>

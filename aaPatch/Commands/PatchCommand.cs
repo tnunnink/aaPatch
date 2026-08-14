@@ -32,8 +32,15 @@ public partial class PatchCommand : ICommand
     /// Gets the filter pattern used to select which objects are included in the output.
     /// Supports wildcard patterns. If not specified, all objects are matched.
     /// </summary>
-    [CommandOption("filter", 'f', Description = $"Filter expressions to filter objects. {AdditionInfoMessage}")]
+    [CommandOption("filter", 'f', Description = $"Filter objects having specified values. {AdditionInfoMessage}")]
     public IReadOnlyCollection<ObjectFilter> Filters { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets a collection of attribute-based filters applied to objects in the Galaxy CSV.
+    /// Filters specify criteria for selecting objects that contain specific attributes.
+    /// </summary>
+    [CommandOption("with", 'w', Description = $"Filter objects containing specific attributes. {AdditionInfoMessage}")]
+    public IReadOnlyList<string> Attributes { get; set; } = [];
 
     /// <summary>
     /// Gets the collection of patches to apply to matching objects.
@@ -47,14 +54,14 @@ public partial class PatchCommand : ICommand
     /// When specified, only the selected attributes will be included in the output objects.
     /// If not specified, all attributes are included.
     /// </summary>
-    [CommandOption("select", 's', Description = $"Specify attributes to include in output. {AdditionInfoMessage}")]
+    [CommandOption("select", 's', Description = $"Attributes to include in output objects. {AdditionInfoMessage}")]
     public IReadOnlyList<FieldSelection> Selections { get; set; } = [];
 
     /// <summary>
     /// Gets the collection of static attributes to add to each output object.
     /// Format: 'Attribute=Value'.
     /// </summary>
-    [CommandOption("add", 'a', Description = $"Attributes to add to each output object. {AdditionInfoMessage}")]
+    [CommandOption("add", 'a', Description = $"Attributes to append to output objects. {AdditionInfoMessage}")]
     public IReadOnlyList<AttributeData> Additions { get; set; } = [];
 
     /// <summary>
@@ -90,7 +97,8 @@ public partial class PatchCommand : ICommand
             var objects = GalaxyDump.Read(csv).ToList();
 
             var output = objects
-                .Where(x => x.Match([.. Filters])) // Filter objects
+                .Where(x => x.Match([.. Filters])) // Filter object by value
+                .Where(x => x.Has(Attributes)) // Filter objects by schema
                 .Select(x => x.Apply(Patches, MatchCase)) // Patch objects
                 .Select(x => x.Add([.. Additions])) // Add fields
                 .Select(x => Selections.Count > 0 ? x.Project([.. Selections]) : x) // Select fields
