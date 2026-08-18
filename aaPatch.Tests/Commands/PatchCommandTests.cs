@@ -1,6 +1,7 @@
 ﻿using aaPatch.Commands;
+using aaPatch.Formats;
 
-namespace aaPatch.Tests;
+namespace aaPatch.Tests.Commands;
 
 using CliFx;
 using CliFx.Infrastructure;
@@ -383,7 +384,12 @@ public class PatchCommandTests
     {
         using var console = new FakeInMemoryConsole();
         console.WriteInput(SimpleGalaxyDump);
-        var command = new PatchCommand { Selections = ["NonExistent"], Format = "json"};
+
+        var command = new PatchCommand
+        {
+            Selections = ["NonExistent"],
+            Format = Format.Json
+        };
 
         await command.ExecuteAsync(console);
 
@@ -450,7 +456,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Format = "aveva"
+            Format = Format.Aveva
         };
 
         await command.ExecuteAsync(console);
@@ -466,27 +472,12 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Format = "json"
+            Format = Format.Json
         };
 
         await command.ExecuteAsync(console);
 
         await Verify(console.ReadOutputString());
-    }
-
-    [Test]
-    public void ExecuteAsync_InvalidFormat_ThrowsCommandException()
-    {
-        using var console = new FakeInMemoryConsole();
-        console.WriteInput(SimpleGalaxyDump);
-
-        var command = new PatchCommand
-        {
-            Format = "invalid"
-        };
-
-        var ex = Assert.ThrowsAsync<CommandException>(async () => await command.ExecuteAsync(console));
-        Assert.That(ex.Message, Does.Contain("Unsupported output format 'invalid'"));
     }
 
     [Test]
@@ -533,7 +524,7 @@ public class PatchCommandTests
         var command = new PatchCommand
         {
             Additions = ["NewField=123"],
-            Format = "json"
+            Format = Format.Json
         };
 
         await command.ExecuteAsync(console);

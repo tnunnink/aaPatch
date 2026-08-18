@@ -1,3 +1,4 @@
+using aaPatch.Formats;
 using aaPatch.Model;
 using CliFx;
 using CliFx.Binding;
@@ -77,7 +78,7 @@ public partial class PatchCommand : ICommand
     /// Defaults to "aveva" if not specified.
     /// </summary>
     [CommandOption("format", Description = "Output format: aveva or json.")]
-    public string Format { get; set; } = "aveva";
+    public Format Format { get; set; } = Format.Aveva;
 
     /// <summary>
     /// Executes the patch command by reading Galaxy dump data, filtering the output objects, applying patches, and writing the result.
@@ -94,9 +95,10 @@ public partial class PatchCommand : ICommand
                 ? await console.Input.ReadToEndAsync()
                 : await File.ReadAllTextAsync(InputFile, cancellation);
 
-            var objects = GalaxyDump.Read(csv).ToList();
+            var formatter = new FormatRouter(Format);
+            var objects = formatter.Read(csv).ToList();
 
-            var output = objects
+            var data = objects
                 .Where(x => x.Match([.. Filters])) // Filter object by value
                 .Where(x => x.Has(Attributes)) // Filter objects by schema
                 .Select(x => x.Apply(Patches, MatchCase)) // Patch objects
@@ -104,7 +106,7 @@ public partial class PatchCommand : ICommand
                 .Select(x => Selections.Count > 0 ? x.Project([.. Selections]) : x) // Select fields
                 .ToList();
 
-            var content = output.Serialize(Format);
+            var content = formatter.Write(data);
 
             var write = OutputFile is null
                 ? console.Output.WriteAsync(content)

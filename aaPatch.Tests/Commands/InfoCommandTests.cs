@@ -1,7 +1,7 @@
 ﻿using aaPatch.Commands;
 using CliFx.Infrastructure;
 
-namespace aaPatch.Tests;
+namespace aaPatch.Tests.Commands;
 
 [TestFixture]
 public class InfoCommandTests
