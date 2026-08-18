@@ -1,9 +1,10 @@
-﻿using aaPatch.Model;
+﻿using aaPatch.Formats;
+using aaPatch.Model;
 
-namespace aaPatch.Tests;
+namespace aaPatch.Tests.Formatters;
 
 [TestFixture]
-public class GalaxyDumpTests
+public class AvevaFormatterTests
 {
     private const string SimpleGalaxyDump =
         """
@@ -20,7 +21,9 @@ public class GalaxyDumpTests
     [Test]
     public void Read_ValidText_ReturnsExpectedObjects()
     {
-        var result = GalaxyDump.Read(SimpleGalaxyDump).ToList();
+        var formatter = new AvevaFormatter();
+        
+        var result = formatter.Read(SimpleGalaxyDump).ToList();
 
         Assert.That(result, Has.Count.EqualTo(3));
 
@@ -43,6 +46,8 @@ public class GalaxyDumpTests
     [Test]
     public void Write_ValidObjects_ReturnsExpectedFormat()
     {
+        var formatter = new AvevaFormatter();
+        
         var objects = new List<ObjectData>
         {
             new(new List<AttributeData>
@@ -59,7 +64,7 @@ public class GalaxyDumpTests
             })
         };
 
-        var result = GalaxyDump.Write(objects);
+        var result = formatter.Write(objects);
 
         Assert.That(result, Does.StartWith(":TEMPLATE=$Pump"));
         Assert.That(result, Does.Contain(":Tagname,Description"));
@@ -71,7 +76,9 @@ public class GalaxyDumpTests
     [Test]
     public void Read_EmptyText_ThrowsArgumentException()
     {
-        Assert.Throws<ArgumentException>(() => GalaxyDump.Read(""));
-        Assert.Throws<ArgumentException>(() => GalaxyDump.Read("   "));
+        var formatter = new AvevaFormatter();
+        
+        Assert.Throws<ArgumentException>(() => formatter.Read(""));
+        Assert.Throws<ArgumentException>(() => formatter.Read("   "));
     }
 }
