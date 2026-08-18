@@ -1,6 +1,6 @@
 using aaPatch.Model;
 
-namespace aaPatch.Tests;
+namespace aaPatch.Tests.Model;
 
 [TestFixture]
 public class ObjectDataTests
