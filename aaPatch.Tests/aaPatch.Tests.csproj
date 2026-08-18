@@ -32,55 +32,13 @@
         <None Update="Files\SimpleGalaxyDump.csv">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None Update="PatchCommandTests.ExecuteAsync_OutputFileSpecified_HasVerifiedOutput.verified.txt">
-          <DependentUpon>PatchCommandTests.cs</DependentUpon>
-        </None>
-        <None Update="PatchCommandTests.ExecuteAsync_InputAndOutputFileSpecified_HasVerifiedOutput.verified.txt">
-          <DependentUpon>PatchCommandTests.cs</DependentUpon>
-        </None>
         <None Update="Files\TestObjectDump.csv">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
-        <None Update="PatchCommandTests.ExecuteAsync_TestObjectDump_HasVerifiedOutput.verified.txt">
-          <DependentUpon>PatchCommandTests.cs</DependentUpon>
-        </None>
-        <None Update="InfoCommandTests.ExecuteAsync_PrintsInfoText.verified.txt">
-          <DependentUpon>InfoCommandTests.cs</DependentUpon>
-        </None>
-        <None Update="PatchCommandTests.ExecuteAsync_InputFileSpecified_HasVerifiedOutput.verified.txt">
-          <DependentUpon>PatchCommandTests.cs</DependentUpon>
-        </None>
-        <None Update="PatchCommandTests.ExecuteAsync_AvevaFormat_HasVerifiedOutput.verified.txt">
-          <DependentUpon>PatchCommandTests.cs</DependentUpon>
-        </None>
-        <None Update="PatchCommandTests.ExecuteAsync_JsonFormat_HasVerifiedOutput.verified.txt">
-          <DependentUpon>PatchCommandTests.cs</DependentUpon>
-        </None>
-        <None Update="PatchCommandTests.ExecuteAsync_Additions_HasExpectedOutput.verified.txt">
-          <DependentUpon>PatchCommandTests.cs</DependentUpon>
-        </None>
-        <None Update="PatchCommandTests.ExecuteAsync_AdditionsInJson_HasExpectedOutput.verified.txt">
-          <DependentUpon>PatchCommandTests.cs</DependentUpon>
-        </None>
-        <None Update="PatchCommandTests.ExecuteAsync_InvalidSelection_OutputIsEmpty.verified.txt">
-          <DependentUpon>PatchCommandTests.cs</DependentUpon>
         </None>
     </ItemGroup>
 
     <ItemGroup>
       <Folder Include="Files\" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <None Update="PatchCommandTests.ExecuteAsync_SimplePatch_HasVerifiedOutput.verified.txt">
-        <DependentUpon>PatchCommandTests.cs</DependentUpon>
-      </None>
-      <None Update="PatchCommandTests.ExecuteAsync_FindReplacePatch_HasVerifiedOutput.verified.txt">
-        <DependentUpon>PatchCommandTests.cs</DependentUpon>
-      </None>
-      <None Update="PatchCommandTests.ExecuteAsync_TagFilter_HasVerifiedOutput.verified.txt">
-        <DependentUpon>PatchCommandTests.cs</DependentUpon>
-      </None>
     </ItemGroup>
 
 </Project>
