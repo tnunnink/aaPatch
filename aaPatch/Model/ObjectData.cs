@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace aaPatch.Model;
@@ -18,22 +17,10 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     private static readonly StringComparer Comparer = StringComparer.OrdinalIgnoreCase;
 
     /// <summary>
-    /// Stores the collection of attribute data instances associated with this object.
-    /// </summary>
-    private readonly List<AttributeData> _attributes;
-
-    /// <summary>
     /// Maintains a dictionary mapping attribute headers to their corresponding <see cref="AttributeData"/> instances,
     /// enabling efficient lookup and management of attributes by their header values.
     /// </summary>
-    private readonly Dictionary<string, AttributeData> _byHeader;
-
-    /// <summary>
-    /// Maintains a mapping of attribute names to their corresponding collections of attributes.
-    /// This dictionary enables quick access to attributes grouped by their names, which is useful
-    /// for operations like retrieval, updates, and projections based on attribute names.
-    /// </summary>
-    private readonly Dictionary<string, List<AttributeData>> _byName;
+    private readonly Dictionary<string, AttributeData> _attributes;
 
     /// <summary>
     /// Represents an exported object instance from a galaxy dump file. This record contains the parent template name and
@@ -41,9 +28,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// </summary>
     public ObjectData(IEnumerable<AttributeData> attributes)
     {
-        _attributes = [.. attributes];
-        _byHeader = _attributes.ToDictionary(a => a.Header, Comparer);
-        _byName = _attributes.GroupBy(a => a.Name).ToDictionary(x => x.Key, x => x.ToList(), Comparer);
+        _attributes = attributes.ToDictionary(a => a.Name, Comparer);
     }
 
     /// <summary>
@@ -129,14 +114,18 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// should be case-sensitive. Defaults to false for case-insensitive operations.</param>
     public void Apply(ObjectPatch patch, bool matchCase = false)
     {
-        if (string.IsNullOrWhiteSpace(patch.Attribute) && !string.IsNullOrEmpty(patch.Find))
-            ReplaceAll(patch.Find, patch.Replacement, matchCase);
-
-        if (!string.IsNullOrWhiteSpace(patch.Attribute) && !string.IsNullOrEmpty(patch.Find))
-            ReplaceFor(patch.Attribute, patch.Find, patch.Replacement, matchCase);
-
-        if (!string.IsNullOrWhiteSpace(patch.Attribute) && string.IsNullOrEmpty(patch.Find))
-            Update(patch.Attribute, patch.Replacement);
+        switch (patch.Type)
+        {
+            case PatchType.ReplaceAll when patch.Find is not null:
+                ReplaceAll(patch.Find, patch.Replacement, matchCase);
+                break;
+            case PatchType.Replace when patch.Find is not null:
+                ReplaceFor(patch.Attribute, patch.Find, patch.Replacement, matchCase);
+                break;
+            default:
+                Update(patch.Attribute, patch.Replacement);
+                break;
+        }
     }
 
     /// <summary>
@@ -159,16 +148,10 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     {
         foreach (var addition in additions)
         {
-            if (_byHeader.ContainsKey(addition.Header))
+            if (!_attributes.TryAdd(addition.Name, addition))
                 throw new ArgumentException(
-                    $"Cannot add attribute '{addition.Header}' because it already exists.\n" +
+                    $"Cannot add attribute '{addition.Name}' because it already exists.\n" +
                     $"Use --patch to modify an existing attribute.");
-
-            _attributes.Add(addition);
-            _byHeader[addition.Header] = addition;
-
-            if (!_byName.TryAdd(addition.Name, [addition]))
-                _byName[addition.Name].Add(addition);
         }
 
         return this;
@@ -203,9 +186,9 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
                 ? attribute.Duplicate()
                 : attribute.Rename(selection.Alias);
 
-            if (!attributes.TryAdd(attribute.Header, attribute))
+            if (!attributes.TryAdd(attribute.Name, attribute))
                 throw new ArgumentException(
-                    $"Duplicate attribute name '{attribute.Header}' in projection. Attribute names must be unique after aliasing.",
+                    $"Duplicate attribute name '{attribute.Name}' in projection. Attribute names must be unique after aliasing.",
                     nameof(selections));
         }
 
@@ -238,21 +221,12 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// <returns>
     /// A comma-separated string that represents the values of the object's attributes.
     /// </returns>
-    public override string ToString()
-    {
-        return string.Join(",", _attributes.Select(a => a.ToString()));
-    }
+    public override string ToString() => string.Join(",", _attributes.Select(a => a.ToString()));
 
     /// <inheritdoc />
-    public IEnumerator<AttributeData> GetEnumerator()
-    {
-        return _attributes.AsEnumerable().GetEnumerator();
-    }
+    public IEnumerator<AttributeData> GetEnumerator() => _attributes.Values.AsEnumerable().GetEnumerator();
 
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     /// <summary>
     /// Adds or updates an attribute with the specified value for this object data instance.
@@ -268,7 +242,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
         if (!TryGetAttribute(name, out var attribute))
             return;
 
-        attribute.Update(value);
+        attribute.Value = value;
     }
 
     /// <summary>
@@ -291,7 +265,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
 
         var value = attribute.Value?.ToString();
         if (value is null || !value.Contains(find, comparison)) return;
-        attribute.Update(value.Replace(find, replace, comparison));
+        attribute.Value = value.Replace(find, replace, comparison);
     }
 
     /// <summary>
@@ -304,11 +278,11 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     {
         var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
-        foreach (var attribute in _attributes)
+        foreach (var attribute in _attributes.Values)
         {
             var value = attribute.Value?.ToString();
             if (value is null || !value.Contains(find, comparison)) continue;
-            attribute.Update(value.Replace(find, replace, comparison));
+            attribute.Value = value.Replace(find, replace, comparison);
         }
     }
 
@@ -323,7 +297,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// </exception>
     private string GetRequiredValue(string key)
     {
-        if (!_byHeader.TryGetValue(key, out var attribute))
+        if (!_attributes.TryGetValue(key, out var attribute))
             throw new InvalidOperationException($"Required attribute {key} does not exist.");
 
         var result = attribute.Value?.ToString();
@@ -355,75 +329,13 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     private bool TryGetAttribute(string name, out AttributeData attribute)
     {
         // Explicit match to the header text first
-        if (_byHeader.TryGetValue(name, out var matched))
+        if (_attributes.TryGetValue(name, out var matched))
         {
             attribute = matched;
             return true;
         }
 
-        // Otherwise try to get by name which might not be unique.
-        if (!_byName.TryGetValue(name, out var attributes))
-        {
-            attribute = null!;
-            return false;
-        }
-
-        if (attributes.Count == 1)
-        {
-            attribute = attributes[0];
-            return true;
-        }
-
-        var headers = string.Join("\n", attributes.Select(a => $"  {a.Header}"));
-        throw new InvalidOperationException($"Attribute '{name}' is ambiguous. Use an exact header:\n{headers}");
-    }
-}
-
-/// <summary>
-/// Provides extension methods for the ObjectData class, enabling additional functionalities such as serialization
-/// of ObjectData instances into various formats.
-/// </summary>
-public static class ObjectDataExtensions
-{
-    /// <summary>
-    /// Defines the JSON serialization options used for customizing the behavior of JSON output,
-    /// such as enabling indented formatting for better readability of the serialized data.
-    /// </summary>
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-
-    /// <summary>
-    /// Serializes a collection of ObjectData instances into a specified output format.
-    /// Supported formats are "aveva" and "json".
-    /// </summary>
-    /// <param name="data">The collection of ObjectData instances to serialize.</param>
-    /// <param name="format">The output format for serialization. Supported values are "aveva" and "json".</param>
-    /// <returns>The serialized string representation of the ObjectData collection.</returns>
-    /// <exception cref="ArgumentException">Thrown when an unsupported output format is specified.</exception>
-    public static string Serialize(this IEnumerable<ObjectData> data, string format)
-    {
-        return format.Trim().ToLowerInvariant() switch
-        {
-            "aveva" => GalaxyDump.Write(data),
-            "json" => WriteJson([.. data]),
-            _ => throw new ArgumentException($"Unsupported output format '{format}'.")
-        };
-
-        string WriteJson(ICollection<ObjectData> d)
-        {
-            var duplicate = d.SelectMany(a => a.GroupBy(x => x.Name)).FirstOrDefault(g => g.Count() > 1);
-
-            if (duplicate is not null)
-                throw new InvalidOperationException(
-                    $"Cannot serialize to JSON: Attribute '{duplicate.Key}' appears multiple times in an object. " +
-                    "JSON format requires unique attribute names. Use --select with aliases to rename duplicate attributes.");
-
-            var dictionary = d.Select(x => x.ToDictionary(
-                a => a.Name,
-                a => a.Value,
-                StringComparer.OrdinalIgnoreCase)
-            );
-
-            return JsonSerializer.Serialize(dictionary, JsonOptions);
-        }
+        attribute = null!;
+        return false;
     }
 }
