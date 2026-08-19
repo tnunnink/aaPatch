@@ -95,7 +95,7 @@ public partial class PatchCommand : ICommand
                 ? await console.Input.ReadToEndAsync()
                 : await File.ReadAllTextAsync(InputFile, cancellation);
 
-            var formatter = new FormatRouter(Format);
+            var formatter = new FormatRouter();
             var objects = formatter.Read(csv).ToList();
 
             var data = objects
@@ -106,7 +106,7 @@ public partial class PatchCommand : ICommand
                 .Select(x => Selections.Count > 0 ? x.Project([.. Selections]) : x) // Select fields
                 .ToList();
 
-            var content = formatter.Write(data);
+            var content = formatter.Write(data, Format);
 
             var write = OutputFile is null
                 ? console.Output.WriteAsync(content)

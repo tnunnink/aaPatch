@@ -11,7 +11,7 @@ namespace aaPatch.Formats;
 /// <remarks>
 /// Supported formats include AVEVA, CSV, and JSON.
 /// </remarks>
-public class FormatRouter(Format format) : IObjectFormater
+public class FormatRouter : IObjectFormater
 {
     private static readonly AvevaFormatter Aveva = new();
     private static readonly JsonFormatter Json = new();
@@ -27,20 +27,31 @@ public class FormatRouter(Format format) : IObjectFormater
             Format.Aveva => Aveva.Read(text),
             Format.Json => Json.Read(text),
             Format.Csv => Csv.Read(text),
-            _ => throw new ArgumentOutOfRangeException(nameof(format), format, null)
+            _ => throw new ArgumentOutOfRangeException(nameof(text), detected, null)
         };
     }
 
-    /// <inheritdoc />
-    public string Write(IEnumerable<ObjectData> data)
+    /// <summary>
+    /// Writes the provided object data to a specific format.
+    /// </summary>
+    /// <param name="data">The collection of object data to be written.</param>
+    /// <param name="format">The target format in which to write the data (e.g., AVEVA, JSON, CSV).</param>
+    /// <returns>A string representation of the data in the specified format.</returns>
+    public string Write(IEnumerable<ObjectData> data, Format format)
     {
         return format switch
         {
             Format.Aveva => Aveva.Write(data),
             Format.Json => Json.Write(data),
             Format.Csv => Csv.Write(data),
-            _ => throw new ArgumentOutOfRangeException(nameof(format), format, null)
+            _ => ((IObjectFormater)this).Write(data)
         };
+    }
+
+    /// <inheritdoc />
+    string IObjectFormater.Write(IEnumerable<ObjectData> data)
+    {
+        return Aveva.Write(data);
     }
 
     /// <summary>
@@ -61,7 +72,7 @@ public class FormatRouter(Format format) : IObjectFormater
 
         if (string.IsNullOrEmpty(trimmed))
             throw new ArgumentException("Input text cannot be null or empty.", nameof(text));
-        
+
         if (trimmed.StartsWith('[')) return Format.Json;
         if (TemplateMatch.IsMatch(trimmed)) return Format.Aveva;
         return Format.Csv;
