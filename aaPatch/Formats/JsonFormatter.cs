@@ -34,14 +34,11 @@ public class JsonFormatter : IObjectFormater
         if (!text.Trim().StartsWith('['))
             throw new ArgumentException("The input JSON must be an array starting with '['.", nameof(text));
 
-        var dictionaries = JsonSerializer.Deserialize<Dictionary<string, object>[]>(text);
+        var records = JsonSerializer.Deserialize<Dictionary<string, object>[]>(text) ?? [];
 
-        if (dictionaries is null)
-            return [];
-
-        return dictionaries.Select(d =>
+        return records.Select(d =>
         {
-            var attributes = d.Select(kvp => new AttributeData(kvp.Key, kvp.Value));
+            var attributes = d.Select(kvp => new AttributeData(kvp.Key, ParseValue(kvp.Value)));
             return new ObjectData(attributes);
         });
     }
@@ -65,5 +62,38 @@ public class JsonFormatter : IObjectFormater
         ).ToArray();
 
         return JsonSerializer.Serialize(dictionary, JsonOptions);
+    }
+
+    /// <summary>
+    /// Parses a JSON value into a corresponding .NET object, handling various JSON value kinds such as strings,
+    /// numbers, booleans, nulls, and complex types (objects or arrays).
+    /// </summary>
+    /// <param name="value">The JSON value to parse, represented as an <see cref="object"/> or <see cref="JsonElement"/>.</param>
+    /// <returns>
+    /// A .NET object representing the parsed value:
+    /// - <see langword="null"/> if the value is <see cref="JsonValueKind.Null"/> or <see cref="JsonValueKind.Undefined"/>.
+    /// - A .NET primitive or string for simple JSON types (e.g., string, number, boolean).
+    /// - A JSON-encoded string for complex types (objects or arrays).
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when the provided <paramref name="value"/> contains an unsupported JSON value kind.
+    /// </exception>
+    private static object? ParseValue(object? value)
+    {
+        if (value is not JsonElement element)
+            return value;
+
+        return element.ValueKind switch
+        {
+            JsonValueKind.Null => null,
+            JsonValueKind.Undefined => null,
+            JsonValueKind.Object or JsonValueKind.Array => element.GetRawText(),
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number when element.TryGetInt32(out var number) => number,
+            JsonValueKind.Number when element.TryGetInt64(out var number) => number,
+            JsonValueKind.Number when element.TryGetDouble(out var number) => number,
+            JsonValueKind.True or JsonValueKind.False => element.GetBoolean(),
+            _ => throw new ArgumentOutOfRangeException(nameof(value), element.ValueKind, "Unsupported JSON value kind.")
+        };
     }
 }

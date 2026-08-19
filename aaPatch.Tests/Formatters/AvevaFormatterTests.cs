@@ -54,7 +54,7 @@ public class AvevaFormatterTests
     }
 
     [Test]
-    public void Write_ValidObjects_ReturnsExpectedFormat()
+    public async Task Write_ValidObjects_MatchesVerified()
     {
         var formatter = new AvevaFormatter();
 
@@ -76,11 +76,7 @@ public class AvevaFormatterTests
 
         var result = formatter.Write(objects);
 
-        Assert.That(result, Does.StartWith(":TEMPLATE=$Pump"));
-        Assert.That(result, Does.Contain(":Tagname,Description"));
-        Assert.That(result, Does.Contain("P_101,Pump 1"));
-        Assert.That(result, Does.Contain(":TEMPLATE=$Valve"));
-        Assert.That(result, Does.Contain("V_101,Valve 1"));
+        await Verify(result);
     }
 
     [Test]
@@ -90,5 +86,27 @@ public class AvevaFormatterTests
 
         Assert.Throws<ArgumentException>(() => formatter.Read(""));
         Assert.Throws<ArgumentException>(() => formatter.Read("   "));
+    }
+
+    [Test]
+    public void Read_WithTypedHeaders_ParsesValuesCorrectly()
+    {
+        var formatter = new AvevaFormatter();
+        var dump =
+            """
+            :TEMPLATE=$Pump
+            :Tagname,HiHi(MxFloat),OpenLimit(MxBoolean),Count(MxInteger)
+            P_101,100.5,true,10
+            """;
+
+        var result = formatter.Read(dump).ToList();
+        var p101 = result[0];
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(p101["HiHi(MxFloat)"], Is.EqualTo(100.5f));
+            Assert.That(p101["OpenLimit(MxBoolean)"], Is.EqualTo(true));
+            Assert.That(p101["Count(MxInteger)"], Is.EqualTo(10));
+        });
     }
 }

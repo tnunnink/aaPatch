@@ -1,0 +1,7 @@
+﻿:TEMPLATE=$Pump
+:Tagname,Description
+P_101,Pump 1
+
+:TEMPLATE=$Valve
+:Tagname,Description
+V_101,Valve 1

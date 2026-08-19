@@ -28,15 +28,12 @@ public class CsvFormatter : IObjectFormater
 
         var records = csv.GetRecords<dynamic>().Cast<IDictionary<string, object?>>().ToArray();
 
+        // CsvHelper will handle duplicate columns by taking the last column value.
+        // I'm not sure if there is a way to detect that before without manually parsing it.
+        // It might not matter either. Kind of on the user to provide valid CSV data.
         foreach (var record in records)
         {
-            var attributes = new Dictionary<string, AttributeData>();
-
-            foreach (var item in record)
-                if (!attributes.TryAdd(item.Key, new AttributeData(item.Key, item.Value)))
-                    throw new ArgumentException($"Duplicate key '{item.Key}' found in CSV record.");
-
-            yield return new ObjectData(attributes.Values);
+            yield return new ObjectData(record.Select(r => new AttributeData(r.Key, r.Value)));
         }
     }
 

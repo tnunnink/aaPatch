@@ -1,0 +1,9 @@
+﻿[
+  {
+    "TagName": "P_101",
+    "Description": "Pump 1",
+    "Value": 10.5,
+    "Enabled": true,
+    "NullValue": null
+  }
+]
