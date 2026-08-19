@@ -1,0 +1,4 @@
+﻿:TEMPLATE=
+:Tagname,Description
+,Centrifugal Pump
+,Gate Valve

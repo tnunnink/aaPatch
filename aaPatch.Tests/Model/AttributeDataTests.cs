@@ -91,7 +91,7 @@ public class AttributeDataTests
         // ReSharper disable once UseObjectOrCollectionInitializer
         var attribute = new AttributeData("Level", 55.5);
 
-        attribute.Value = 60.0;
+        attribute.Update(60.0);
 
         Assert.That(attribute.Value, Is.EqualTo(60.0));
     }

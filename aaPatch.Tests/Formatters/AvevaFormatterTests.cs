@@ -19,26 +19,36 @@ public class AvevaFormatterTests
         """;
 
     [Test]
-    public void Read_ValidText_ReturnsExpectedObjects()
+    public void Read_ValidText_HasExpectedObjectCount()
     {
         var formatter = new AvevaFormatter();
-        
+
         var result = formatter.Read(SimpleGalaxyDump).ToList();
 
         Assert.That(result, Has.Count.EqualTo(3));
+    }
 
-        var p101 = result.First(x => x.TagName == "P_101");
+    [Test]
+    public void Read_ValidText_HasExpectedObjectData()
+    {
+        var formatter = new AvevaFormatter();
+
+        var result = formatter.Read(SimpleGalaxyDump).ToList();
+
+        var p101 = result.First(x => x.Match("P_101"));
+
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(p101.Template, Is.EqualTo("$Pump"));
+            Assert.That(p101["Template"], Is.EqualTo("$Pump"));
             Assert.That(p101["Description"], Is.EqualTo("Centrifugal Pump"));
             Assert.That(p101["HiHi"], Is.EqualTo("100.0"));
         }
 
-        var v201 = result.First(x => x.TagName == "V_201");
+        var v201 = result.First(x => x.Match("V_201"));
+
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(v201.Template, Is.EqualTo("$Valve"));
+            Assert.That(v201["Template"], Is.EqualTo("$Valve"));
             Assert.That(v201["OpenLimit"], Is.EqualTo("True"));
         }
     }
@@ -47,7 +57,7 @@ public class AvevaFormatterTests
     public void Write_ValidObjects_ReturnsExpectedFormat()
     {
         var formatter = new AvevaFormatter();
-        
+
         var objects = new List<ObjectData>
         {
             new(new List<AttributeData>
@@ -77,7 +87,7 @@ public class AvevaFormatterTests
     public void Read_EmptyText_ThrowsArgumentException()
     {
         var formatter = new AvevaFormatter();
-        
+
         Assert.Throws<ArgumentException>(() => formatter.Read(""));
         Assert.Throws<ArgumentException>(() => formatter.Read("   "));
     }

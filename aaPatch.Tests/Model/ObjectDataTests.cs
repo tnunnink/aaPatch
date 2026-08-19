@@ -10,7 +10,7 @@ public class ObjectDataTests
         new("Template", "$Pump"),
         new("TagName", "P_101"),
         new("Description", "Centrifugal Pump"),
-        new("HiHi(MxDouble)", "100.0")
+        new("HiHi(MxDouble)", 100.0)
     ];
 
     [Test]
@@ -22,31 +22,11 @@ public class ObjectDataTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(data.Template, Is.EqualTo("$Pump"));
-            Assert.That(data.TagName, Is.EqualTo("P_101"));
+            Assert.That(data["Template"], Is.EqualTo("$Pump"));
+            Assert.That(data["TagName"], Is.EqualTo("P_101"));
             Assert.That(data.Select(a => a.Name), Has.Member("Description"));
             Assert.That(data.Select(a => a.Value), Has.Member("Centrifugal Pump"));
         }
-    }
-
-    [Test]
-    public void Template_MissingAttribute_ThrowsInvalidOperationException()
-    {
-        var attributes = new List<AttributeData> { new("Description", "No Tagname Here") };
-
-        var data = new ObjectData(attributes);
-
-        Assert.Throws<InvalidOperationException>(() => _ = data.Template);
-    }
-
-    [Test]
-    public void TagName_MissingAttribute_ThrowsInvalidOperationException()
-    {
-        var attributes = new List<AttributeData> { new("Description", "No Tagname Here") };
-
-        var data = new ObjectData(attributes);
-
-        Assert.Throws<InvalidOperationException>(() => _ = data.TagName);
     }
 
     [Test]
@@ -184,8 +164,8 @@ public class ObjectDataTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(data.Template, Is.EqualTo("$Motor"));
-            Assert.That(data.TagName, Is.EqualTo("P_999"));
+            Assert.That(data["Template"], Is.EqualTo("$Motor"));
+            Assert.That(data["TagName"], Is.EqualTo("P_999"));
             Assert.That(data["Attr1"], Is.EqualTo("Motor_P_999"));
         }
     }
@@ -221,7 +201,7 @@ public class ObjectDataTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(projected, Has.Count.EqualTo(1));
-            Assert.That(projected.TagName, Is.EqualTo("P_101"));
+            Assert.That(projected["TagName"], Is.EqualTo("P_101"));
         }
     }
 
@@ -235,8 +215,8 @@ public class ObjectDataTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(projected, Has.Count.EqualTo(2));
-            Assert.That(projected.Template, Is.EqualTo("$Pump"));
-            Assert.That(projected.TagName, Is.EqualTo("P_101"));
+            Assert.That(projected["Template"], Is.EqualTo("$Pump"));
+            Assert.That(projected["TagName"], Is.EqualTo("P_101"));
         }
     }
 
@@ -265,7 +245,7 @@ public class ObjectDataTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(projected, Has.Count.EqualTo(2));
-            Assert.That(projected.TagName, Is.EqualTo("P_101"));
+            Assert.That(projected["TagName"], Is.EqualTo("P_101"));
             Assert.That(projected["Desc"], Is.EqualTo("Centrifugal Pump"));
         }
     }
@@ -280,7 +260,7 @@ public class ObjectDataTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(projected, Has.Count.EqualTo(2));
-            Assert.That(projected.TagName, Is.EqualTo("P_101"));
+            Assert.That(projected["TagName"], Is.EqualTo("P_101"));
             Assert.That(projected["Desc"], Is.EqualTo("Centrifugal Pump"));
         }
     }
@@ -290,7 +270,7 @@ public class ObjectDataTests
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        var projected = data.Project(["HiHi"]);
+        var projected = data.Project("HiHi");
 
         Assert.That(projected["HiHi"], Is.EqualTo(100.0));
     }
@@ -301,7 +281,7 @@ public class ObjectDataTests
         var data = new ObjectData(CreateDefaultAttributes());
 
         var result = data.Project("NonExistent");
-        
+
         Assert.That(result, Is.Empty);
     }
 
@@ -310,7 +290,7 @@ public class ObjectDataTests
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        Assert.Throws<ArgumentException>(() => data.Project(["TagName=Same", "Template=Same"]));
+        Assert.Throws<ArgumentException>(() => data.Project("TagName=Same", "Template=Same"));
     }
 
     [Test]

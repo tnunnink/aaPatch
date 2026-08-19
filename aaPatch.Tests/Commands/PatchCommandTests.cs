@@ -154,7 +154,7 @@ public class PatchCommandTests
             };
 
             var ex = Assert.ThrowsAsync<CommandException>(async () => await command.ExecuteAsync(console));
-            Assert.That(ex.Message, Does.Contain("The text parameter cannot be null or empty"));
+            Assert.That(ex.Message, Does.Contain("Input text cannot be null or empty."));
         }
         finally
         {
@@ -398,7 +398,7 @@ public class PatchCommandTests
     }
 
     [Test]
-    public void ExecuteAsync_WithoutIdentitySelections_ThrowsCommandException()
+    public async Task ExecuteAsync_WithoutIdentitySelections_WritesNullValuesForFields()
     {
         using var console = new FakeInMemoryConsole();
         console.WriteInput(SimpleGalaxyDump);
@@ -408,9 +408,10 @@ public class PatchCommandTests
             Selections = ["Description"]
         };
 
-        var ex = Assert.ThrowsAsync<CommandException>(async () => await command.ExecuteAsync(console));
-        Assert.That(ex.Message, Does.Contain("Required attribute Template does not exist")
-            .Or.Contain("Required attribute TagName does not exist"));
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        await Verify(output);
     }
 
     [Test]

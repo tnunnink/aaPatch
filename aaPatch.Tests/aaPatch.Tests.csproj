@@ -35,6 +35,9 @@
         <None Update="Files\TestObjectDump.csv">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+        <None Update="Commands\PatchCommandTests.ExecuteAsync_WithoutIdentitySelections_WritesNullValuesForFields.verified.txt">
+          <DependentUpon>PatchCommandTests.cs</DependentUpon>
+        </None>
     </ItemGroup>
 
     <ItemGroup>
