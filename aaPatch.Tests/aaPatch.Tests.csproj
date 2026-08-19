@@ -41,6 +41,21 @@
         <None Update="Formatters\AvevaFormatterTests.Write_WithTypedValues_MatchesVerified.verified.txt">
           <DependentUpon>AvevaFormatterTests.cs</DependentUpon>
         </None>
+        <None Update="Integration\ConversionTests.AvevaToCsv_RoundTrip_AvevaToCsv.verified.txt">
+          <DependentUpon>ConversionTests.cs</DependentUpon>
+        </None>
+        <None Update="Integration\ConversionTests.AvevaToJson_RoundTrip_AvevaToJson.verified.txt">
+          <DependentUpon>ConversionTests.cs</DependentUpon>
+        </None>
+        <None Update="Integration\ConversionTests.CsvToAveva_RoundTrip_CsvToAveva.verified.txt">
+          <DependentUpon>ConversionTests.cs</DependentUpon>
+        </None>
+        <None Update="Integration\ConversionTests.CsvToJson_RoundTrip_CsvToJson.verified.txt">
+          <DependentUpon>ConversionTests.cs</DependentUpon>
+        </None>
+        <None Update="Integration\ConversionTests.JsonToAveva_RoundTrip_JsonToAveva.verified.txt">
+          <DependentUpon>ConversionTests.cs</DependentUpon>
+        </None>
     </ItemGroup>
 
     <ItemGroup>

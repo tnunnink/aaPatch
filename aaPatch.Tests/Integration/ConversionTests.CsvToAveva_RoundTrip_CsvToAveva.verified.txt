@@ -1,0 +1,3 @@
+﻿:TEMPLATE=$Pump
+:Tagname,HiHi(MxFloat),Enabled(MxBoolean)
+P_101,100.5,true

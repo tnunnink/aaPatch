@@ -1,0 +1,8 @@
+﻿[
+  {
+    "Template": "$Pump",
+    "TagName": "P_101",
+    "HiHi(MxFloat)": 100.5,
+    "Enabled(MxBoolean)": true
+  }
+]

@@ -61,4 +61,41 @@ public class ConversionTests
 
         await Verify(json).UseTextForParameters("CsvToJson");
     }
+
+    [Test]
+    public async Task AvevaToJson_RoundTrip()
+    {
+        const string aveva =
+            """
+            :TEMPLATE=$Pump
+            :Tagname,HiHi(MxFloat),Enabled(MxBoolean)
+            P_101,100.5,true
+            """;
+
+        var avevaFormatter = new AvevaFormatter();
+        var jsonFormatter = new JsonFormatter();
+
+        var objects = avevaFormatter.Read(aveva).ToList();
+        var json = jsonFormatter.Write(objects);
+
+        await Verify(json).UseTextForParameters("AvevaToJson");
+    }
+
+    [Test]
+    public async Task CsvToAveva_RoundTrip()
+    {
+        const string csv =
+            """
+            Template,TagName,HiHi(MxFloat),Enabled(MxBoolean)
+            $Pump,P_101,100.5,true
+            """;
+
+        var csvFormatter = new CsvFormatter();
+        var avevaFormatter = new AvevaFormatter();
+
+        var objects = csvFormatter.Read(csv).ToList();
+        var aveva = avevaFormatter.Write(objects);
+
+        await Verify(aveva).UseTextForParameters("CsvToAveva");
+    }
 }
