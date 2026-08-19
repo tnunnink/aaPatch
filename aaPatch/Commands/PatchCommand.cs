@@ -33,15 +33,8 @@ public partial class PatchCommand : ICommand
     /// Gets the filter pattern used to select which objects are included in the output.
     /// Supports wildcard patterns. If not specified, all objects are matched.
     /// </summary>
-    [CommandOption("filter", 'f', Description = $"Filter objects having specified values. {AdditionInfoMessage}")]
+    [CommandOption("where", 'w', Description = $"Filter objects having specified values. {AdditionInfoMessage}")]
     public IReadOnlyCollection<ObjectFilter> Filters { get; set; } = [];
-
-    /// <summary>
-    /// Gets or sets a collection of attribute-based filters applied to objects in the Galaxy CSV.
-    /// Filters specify criteria for selecting objects that contain specific attributes.
-    /// </summary>
-    [CommandOption("with", 'w', Description = $"Filter objects containing specific attributes. {AdditionInfoMessage}")]
-    public IReadOnlyList<string> Attributes { get; set; } = [];
 
     /// <summary>
     /// Gets the collection of patches to apply to matching objects.
@@ -66,10 +59,17 @@ public partial class PatchCommand : ICommand
     public IReadOnlyList<AttributeData> Additions { get; set; } = [];
 
     /// <summary>
+    /// Gets or sets a collection of attribute-based filters applied to objects in the Galaxy CSV.
+    /// Filters specify criteria for selecting objects that contain specific attributes.
+    /// </summary>
+    [CommandOption("has", 'c', Description = $"Filter objects containing specific attributes. {AdditionInfoMessage}")]
+    public IReadOnlyList<string> Attributes { get; set; } = [];
+
+    /// <summary>
     /// Gets or sets a value indicating whether to perform case-sensitive matching for find-replace operations.
     /// Default is false (case-insensitive).
     /// </summary>
-    [CommandOption("match-case", 'm', Description = "Perform case-sensitive matching for find-replace operations.")]
+    [CommandOption("match", 'm', Description = "Perform case-sensitive matching for find-replace operations.")]
     public bool MatchCase { get; set; }
 
     /// <summary>
@@ -77,7 +77,7 @@ public partial class PatchCommand : ICommand
     /// Supported options are "aveva" for AVEVA format and "json" for JSON format.
     /// Defaults to "aveva" if not specified.
     /// </summary>
-    [CommandOption("format", Description = "Output format: aveva or json.")]
+    [CommandOption("format", 'f', Description = "Output format")]
     public Format Format { get; set; } = Format.Aveva;
 
     /// <summary>

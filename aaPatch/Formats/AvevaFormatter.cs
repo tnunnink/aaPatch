@@ -158,6 +158,8 @@ public class AvevaFormatter : IObjectFormater
             csv.WriteField(TagNameKey);
 
             // Write remaining headers based on the first object.
+            //todo we probably need to ensure header order matches the order we write the value...
+            var header = group.First().Where(a => !IsIdentity(a)).Select(a => a.Name);
             group.First().Where(a => !IsIdentity(a)).Select(a => a.Name).ToList().ForEach(csv.WriteField);
             csv.NextRecord();
 
@@ -200,11 +202,9 @@ public class AvevaFormatter : IObjectFormater
     /// </summary>
     private static object? ParseValue(string? text, Type type)
     {
-        if (string.IsNullOrWhiteSpace(text))
-            return null;
-
         return text switch
         {
+            null => null,
             _ when type == typeof(bool) => bool.Parse(text),
             _ when type == typeof(int) => int.Parse(text),
             _ when type == typeof(long) => long.Parse(text),

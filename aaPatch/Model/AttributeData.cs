@@ -1,4 +1,6 @@
-﻿namespace aaPatch.Model;
+﻿using System.Globalization;
+
+namespace aaPatch.Model;
 
 /// <summary>
 /// Represents attribute data consisting of a header, a type, a name, and an associated value.
@@ -59,7 +61,7 @@ public class AttributeData
     /// also be null. The type of the returned object can vary and depends on
     /// the type specified in the header (e.g., string, int, bool, etc.).
     /// </remarks>
-    public object? Value { get; set; }
+    public object? Value { get; private set; }
 
     /// <summary>
     /// Creates a new <see cref="AttributeData"/> instance with the specified name while preserving the current value.
@@ -76,6 +78,19 @@ public class AttributeData
     /// A new <see cref="AttributeData"/> instance with the same header and value as the current instance.
     /// </returns>
     public AttributeData Duplicate() => new(Name, Value);
+
+    /// <summary>
+    /// Updates the value of the attribute by converting it to the current type of the attribute's value
+    /// using the invariant culture.
+    /// </summary>
+    /// <param name="value">The new value to update the attribute with. The value is converted to the type of the existing value, or to a string type if the existing value is null.</param>
+    /// <exception cref="InvalidCastException">Thrown when the value cannot be converted to the type of the existing attribute's value.</exception>
+    /// <exception cref="FormatException">Thrown when the format of the value is invalid for the conversion to the target type.</exception>
+    public void Update(object? value)
+    {
+        var type = Value?.GetType() ?? typeof(string);
+        Value = Convert.ChangeType(value, type, CultureInfo.InvariantCulture);
+    }
 
     /// <summary>
     /// Returns a string representation of the current <see cref="AttributeData"/> instance.

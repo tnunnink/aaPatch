@@ -31,14 +31,17 @@ public class JsonFormatter : IObjectFormater
         if (string.IsNullOrWhiteSpace(text))
             throw new ArgumentException("The text parameter cannot be null or empty.", nameof(text));
 
+        if (!text.Trim().StartsWith('['))
+            throw new ArgumentException("The input JSON must be an array starting with '['.", nameof(text));
+
         var dictionaries = JsonSerializer.Deserialize<Dictionary<string, object>[]>(text);
 
         if (dictionaries is null)
             return [];
 
-        return dictionaries.Select(dict =>
+        return dictionaries.Select(d =>
         {
-            var attributes = dict.Select(kvp => new AttributeData(kvp.Key, kvp.Value));
+            var attributes = d.Select(kvp => new AttributeData(kvp.Key, kvp.Value));
             return new ObjectData(attributes);
         });
     }
@@ -55,16 +58,7 @@ public class JsonFormatter : IObjectFormater
     /// </exception>
     public string Write(IEnumerable<ObjectData> data)
     {
-        var collection = data.ToList();
-
-        var duplicate = collection.SelectMany(a => a.GroupBy(x => x.Name)).FirstOrDefault(g => g.Count() > 1);
-
-        if (duplicate is not null)
-            throw new InvalidOperationException(
-                $"Cannot serialize to JSON: Attribute '{duplicate.Key}' appears multiple times in an object. " +
-                "Use --select with aliases to rename duplicate attributes.");
-
-        var dictionary = collection.Select(x => x.ToDictionary(
+        var dictionary = data.Select(x => x.ToDictionary(
             a => a.Name,
             a => a.Value,
             StringComparer.OrdinalIgnoreCase)

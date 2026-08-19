@@ -37,23 +37,13 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     public int Count => _attributes.Count;
 
     /// <summary>
-    /// Gets the template string associated with this instance of the data.
-    /// </summary>
-    public string Template => GetRequiredValue(nameof(Template));
-
-    /// <summary>
-    /// Gets the tag name identifier for this object data instance.
-    /// </summary>
-    public string TagName => GetRequiredValue(nameof(TagName));
-
-    /// <summary>
     /// Provides an indexer for accessing object data attributes by name. The indexer allows retrieval of the
     /// value associated with a specific attribute, including special cases for "Template" and "TagName".
     /// </summary>
     /// <param name="name">The name of the attribute to retrieve. Use "Template" or "TagName" to access their corresponding values,
     /// or the name of a specific object attribute.</param>
     /// <returns>The value of the requested attribute if it exists, or null if the attribute is not defined.</returns>
-    public object? this[string name] => TryGetAttribute(name, out var attribute) ? attribute.Value : null;
+    public object? this[string name] => TryResolveAttribute(name, out var attribute) ? attribute.Value : null;
 
     /// <summary>
     /// Determines whether the object matches the specified filter condition.
@@ -76,7 +66,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
 
         foreach (var filter in filters)
         {
-            if (!TryGetAttribute(filter.Attribute, out var attribute))
+            if (!TryResolveAttribute(filter.Attribute, out var attribute))
                 return false;
 
             var value = attribute.Value?.ToString() ?? string.Empty;
@@ -179,7 +169,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
 
         foreach (var selection in selections)
         {
-            if (!TryGetAttribute(selection.Attribute, out var attribute))
+            if (!TryResolveAttribute(selection.Attribute, out var attribute))
                 continue;
 
             attribute = string.IsNullOrWhiteSpace(selection.Alias)
@@ -207,7 +197,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
 
         foreach (var attribute in attributes)
         {
-            if (!TryGetAttribute(attribute, out _))
+            if (!TryResolveAttribute(attribute, out _))
                 return false;
         }
 
@@ -239,10 +229,10 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Attribute name cannot be null or whitespace.", nameof(name));
 
-        if (!TryGetAttribute(name, out var attribute))
+        if (!TryResolveAttribute(name, out var attribute))
             return;
 
-        attribute.Value = value;
+        attribute.Update(value);
     }
 
     /// <summary>
@@ -260,12 +250,12 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     {
         var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
-        if (!TryGetAttribute(name, out var attribute))
+        if (!TryResolveAttribute(name, out var attribute))
             return;
 
         var value = attribute.Value?.ToString();
         if (value is null || !value.Contains(find, comparison)) return;
-        attribute.Value = value.Replace(find, replace, comparison);
+        attribute.Update(value.Replace(find, replace, comparison));
     }
 
     /// <summary>
@@ -282,60 +272,47 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
         {
             var value = attribute.Value?.ToString();
             if (value is null || !value.Contains(find, comparison)) continue;
-            attribute.Value = value.Replace(find, replace, comparison);
+            attribute.Update(value.Replace(find, replace, comparison));
         }
     }
 
     /// <summary>
-    /// Retrieves the value associated with the specified key from the attribute collection.
-    /// If the key does not exist or the value is null or empty, an exception is thrown.
+    /// Attempts to resolve an attribute by its name from the collection of attributes.
+    /// If an explicit match is found, it is returned. If no explicit match exists, attempts
+    /// to find a single attribute whose name starts with the provided input.
     /// </summary>
-    /// <param name="key">The key of the attribute to retrieve.</param>
-    /// <returns>The value of the specified attribute as a non-null, non-empty string.</returns>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown if the specified key is not found or if the corresponding value is null or empty.
-    /// </exception>
-    private string GetRequiredValue(string key)
+    /// <param name="name">The name of the attribute to resolve. Can be a full name or the starting portion of the name.</param>
+    /// <param name="attribute">When the method returns, contains the resolved attribute if the resolution succeeds,
+    /// or null if it fails.</param>
+    /// <returns>
+    /// True if the resolution succeeds and an attribute is found; otherwise, false if no matching or ambiguous matches exist.
+    /// </returns>
+    private bool TryResolveAttribute(string name, out AttributeData attribute)
     {
-        if (!_attributes.TryGetValue(key, out var attribute))
-            throw new InvalidOperationException($"Required attribute {key} does not exist.");
-
-        var result = attribute.Value?.ToString();
-
-        if (string.IsNullOrEmpty(result))
-            throw new InvalidOperationException($"Required attribute {key} has an invalid null or empty value.");
-
-        return result;
-    }
-
-    /// <summary>
-    /// Attempts to retrieve an attribute from the object by its name.
-    /// The method first looks for an exact match based on the header name,
-    /// and if that fails, attempts to find a match by name, provided the match is unique.
-    /// </summary>
-    /// <param name="name">The name of the attribute to retrieve.</param>
-    /// <param name="attribute">
-    /// When this method returns, contains the <see cref="AttributeData"/> associated with the specified name,
-    /// if it exists and is uniquely identifiable; otherwise, it is set to null.
-    /// </param>
-    /// <returns>true if the attribute is found and uniquely identifiable; otherwise, false.</returns>
-    /// <remarks>
-    /// Why do this? Because AVEVA attribute names are not unique.
-    /// You can have a Wizard option and an Attribute with the same name
-    /// but different CSV headers because they include type metadata.
-    /// Going to be lax with this tool to avoid throwing for every feature that needs an
-    /// attribute that does not exist (different templates have different schemas)
-    /// </remarks>
-    private bool TryGetAttribute(string name, out AttributeData attribute)
-    {
-        // Explicit match to the header text first
+        // Explicit match to the attribute name wins first
         if (_attributes.TryGetValue(name, out var matched))
         {
             attribute = matched;
             return true;
         }
 
-        attribute = null!;
-        return false;
+        // Otherwise, help the user and try to find the name starting with the provided text.
+        // This is designed to help with accessing AVEVA columns that have type metadata (e.g., MyColumn(MxInteger))
+        var prefix = $"{name}(";
+        var matches = _attributes.Keys.Where(k => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        switch (matches.Count)
+        {
+            case > 1:
+                throw new ArgumentException(
+                    $"Ambiguous attribute name '{name}'. Multiple attributes match: {string.Join(", ", matches)}. " +
+                    "Please specify the full attribute name including type suffix.");
+            case 1:
+                attribute = _attributes[matches[0]];
+                return true;
+            default:
+                attribute = null!;
+                return false;
+        }
     }
 }

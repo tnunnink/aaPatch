@@ -1,4 +1,5 @@
-﻿using aaPatch.Model;
+﻿using System.Text.RegularExpressions;
+using aaPatch.Model;
 
 namespace aaPatch.Formats;
 
@@ -19,7 +20,9 @@ public class FormatRouter(Format format) : IObjectFormater
     /// <inheritdoc />
     public IEnumerable<ObjectData> Read(string text)
     {
-        return format switch
+        var detected = DetectFormat(text);
+
+        return detected switch
         {
             Format.Aveva => Aveva.Read(text),
             Format.Json => Json.Read(text),
@@ -38,5 +41,29 @@ public class FormatRouter(Format format) : IObjectFormater
             Format.Csv => Csv.Write(data),
             _ => throw new ArgumentOutOfRangeException(nameof(format), format, null)
         };
+    }
+
+    /// <summary>
+    /// Defines a regular expression used to separate object data segments by templates within a text structure.
+    /// This separator identifies segments starting with the predefined template key and processes them in a case-insensitive, multiline context.
+    /// </summary>
+    private static readonly Regex TemplateMatch = new($"^{Regex.Escape(":TEMPLATE=")}",
+        RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// Detects the format of the provided text content.
+    /// </summary>
+    /// <param name="text">The input text whose format needs to be determined.</param>
+    /// <returns>The detected <see cref="Format"/> of the input text.</returns>
+    private static Format DetectFormat(string text)
+    {
+        var trimmed = text.TrimStart();
+
+        if (string.IsNullOrEmpty(trimmed))
+            throw new ArgumentException("Input text cannot be null or empty.", nameof(text));
+        
+        if (trimmed.StartsWith('[')) return Format.Json;
+        if (TemplateMatch.IsMatch(trimmed)) return Format.Aveva;
+        return Format.Csv;
     }
 }
