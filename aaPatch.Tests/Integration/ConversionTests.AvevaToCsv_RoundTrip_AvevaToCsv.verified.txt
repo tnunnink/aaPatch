@@ -1,0 +1,2 @@
+﻿Template,TagName,HiHi(MxFloat),Enabled(MxBoolean)
+$Pump,P_101,100.5,true
