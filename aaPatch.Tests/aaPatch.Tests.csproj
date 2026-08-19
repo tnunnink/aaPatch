@@ -38,6 +38,9 @@
         <None Update="Commands\PatchCommandTests.ExecuteAsync_WithoutIdentitySelections_WritesNullValuesForFields.verified.txt">
           <DependentUpon>PatchCommandTests.cs</DependentUpon>
         </None>
+        <None Update="Formatters\AvevaFormatterTests.Write_WithTypedValues_MatchesVerified.verified.txt">
+          <DependentUpon>AvevaFormatterTests.cs</DependentUpon>
+        </None>
     </ItemGroup>
 
     <ItemGroup>

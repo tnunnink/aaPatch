@@ -22,15 +22,19 @@ public class CsvFormatterTests
 
         Assert.That(result, Has.Count.EqualTo(2));
 
-        var p101 = result[0];
-        Assert.That(p101["TagName"], Is.EqualTo("P_101"));
-        Assert.That(p101["Description"], Is.EqualTo("Centrifugal Pump"));
-        Assert.That(p101["Value"], Is.EqualTo("100.0"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result[0]["TagName"], Is.EqualTo("P_101"));
+            Assert.That(result[0]["Description"], Is.EqualTo("Centrifugal Pump"));
+            Assert.That(result[0]["Value"], Is.EqualTo("100.0"));
+        }
 
-        var v201 = result[1];
-        Assert.That(v201["TagName"], Is.EqualTo("V_201"));
-        Assert.That(v201["Description"], Is.EqualTo("Gate Valve"));
-        Assert.That(v201["Value"], Is.EqualTo("true"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result[1]["TagName"], Is.EqualTo("V_201"));
+            Assert.That(result[1]["Description"], Is.EqualTo("Gate Valve"));
+            Assert.That(result[1]["Value"], Is.EqualTo("true"));
+        }
     }
 
     [Test]

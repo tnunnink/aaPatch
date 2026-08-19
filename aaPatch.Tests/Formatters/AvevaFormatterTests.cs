@@ -92,21 +92,43 @@ public class AvevaFormatterTests
     public void Read_WithTypedHeaders_ParsesValuesCorrectly()
     {
         var formatter = new AvevaFormatter();
-        var dump =
+        const string dump =
             """
             :TEMPLATE=$Pump
-            :Tagname,HiHi(MxFloat),OpenLimit(MxBoolean),Count(MxInteger)
-            P_101,100.5,true,10
+            :Tagname,HiHi(MxFloat),OpenLimit(MxBoolean),Count(MxInteger),Level(MxDouble)
+            P_101,100.5,true,10,55.55
             """;
 
-        var result = formatter.Read(dump).ToList();
-        var p101 = result[0];
+        var result = formatter.Read(dump).ToList()[0];
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
-            Assert.That(p101["HiHi(MxFloat)"], Is.EqualTo(100.5f));
-            Assert.That(p101["OpenLimit(MxBoolean)"], Is.EqualTo(true));
-            Assert.That(p101["Count(MxInteger)"], Is.EqualTo(10));
-        });
+            Assert.That(result["HiHi(MxFloat)"], Is.EqualTo(100.5f));
+            Assert.That(result["OpenLimit(MxBoolean)"], Is.True);
+            Assert.That(result["Count(MxInteger)"], Is.EqualTo(10));
+            Assert.That(result["Level(MxDouble)"], Is.EqualTo(55.55));
+        }
+    }
+
+    [Test]
+    public async Task Write_WithTypedValues_MatchesVerified()
+    {
+        var formatter = new AvevaFormatter();
+        var objects = new List<ObjectData>
+        {
+            new(new List<AttributeData>
+            {
+                new("Template", "$Pump"),
+                new("TagName", "P_101"),
+                new("HiHi(MxFloat)", 100.5f),
+                new("Count(MxInteger)", 10),
+                new("Enabled(MxBoolean)", true),
+                new("Level(MxDouble)", 55.55)
+            })
+        };
+
+        var result = formatter.Write(objects);
+
+        await Verify(result);
     }
 }

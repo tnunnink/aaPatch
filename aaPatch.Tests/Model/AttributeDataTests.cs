@@ -115,4 +115,40 @@ public class AttributeDataTests
         var attribute = new AttributeData("Description", null);
         Assert.That(attribute.ToString(), Is.EqualTo(string.Empty));
     }
+
+    [Test]
+    public void Update_StringToInt_ConvertsCorrectly()
+    {
+        var attribute = new AttributeData("Count", 10);
+        attribute.Update("20");
+        Assert.Multiple(() =>
+        {
+            Assert.That(attribute.Value, Is.EqualTo(20));
+            Assert.That(attribute.Value, Is.TypeOf<int>());
+        });
+    }
+
+    [Test]
+    public void Update_DoubleToInt_ConvertsCorrectly()
+    {
+        var attribute = new AttributeData("Count", 10);
+        attribute.Update(20.5);
+        // Banker's rounding: 20.5 -> 20
+        Assert.That(attribute.Value, Is.EqualTo(20));
+    }
+
+    [Test]
+    public void Update_BoolToString_ConvertsCorrectly()
+    {
+        var attribute = new AttributeData("Flag", "maybe");
+        attribute.Update(true);
+        Assert.That(attribute.Value, Is.EqualTo("True")); // Convert.ChangeType(true, typeof(string)) -> "True"
+    }
+
+    [Test]
+    public void Update_InvalidFormat_ThrowsFormatException()
+    {
+        var attribute = new AttributeData("Count", 10);
+        Assert.Throws<FormatException>(() => attribute.Update("not a number"));
+    }
 }

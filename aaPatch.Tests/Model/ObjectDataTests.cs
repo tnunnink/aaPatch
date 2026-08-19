@@ -302,4 +302,54 @@ public class ObjectDataTests
 
         Assert.That(result, Is.Empty);
     }
+
+    [Test]
+    public void Match_TypeAwareMatching()
+    {
+        var data = new ObjectData(new List<AttributeData>
+        {
+            new("TagName", "P_101"),
+            new("Value(MxDouble)", 100.5)
+        });
+
+        // Filter value is string "100.5", should match against double 100.5
+        Assert.That(data.Match("Value=100.5"), Is.True);
+        Assert.That(data.Match("Value=100*"), Is.True);
+    }
+
+    [Test]
+    public void Apply_TypeAwarePatching()
+    {
+        var data = new ObjectData(new List<AttributeData>
+        {
+            new("TagName", "P_101"),
+            new("Enabled(MxBoolean)", true)
+        });
+
+        // Patch with string "false", should update the boolean value
+        data.Apply("Enabled=false");
+        Assert.Multiple(() =>
+        {
+            Assert.That(data["Enabled"], Is.EqualTo(false));
+            Assert.That(data["Enabled"], Is.TypeOf<bool>());
+        });
+    }
+
+    [Test]
+    public void Apply_ReplaceOnTypedValue()
+    {
+        var data = new ObjectData(new List<AttributeData>
+        {
+            new("TagName", "P_101"),
+            new("Count(MxInteger)", 10)
+        });
+
+        // Replace "1" with "2" -> "20"
+        data.Apply("Count:1=2");
+        Assert.Multiple(() =>
+        {
+            Assert.That(data["Count"], Is.EqualTo(20));
+            Assert.That(data["Count"], Is.TypeOf<int>());
+        });
+    }
 }
