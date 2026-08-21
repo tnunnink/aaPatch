@@ -1,4 +1,5 @@
 ﻿using aaPatch.Model;
+using FluentAssertions;
 
 namespace aaPatch.Tests.Model;
 
@@ -8,7 +9,8 @@ public class AttributeDataTests
     [Test]
     public void Constructor_InvalidHeader_ThrowsArgumentException()
     {
-        Assert.Throws<ArgumentException>(() => _ = new AttributeData("", "value"));
+        var act = () => _ = new AttributeData("", "value");
+        act.Should().Throw<ArgumentException>();
     }
 
     [Test]
@@ -16,23 +18,18 @@ public class AttributeDataTests
     {
         var attribute = new AttributeData("Description", "Pump");
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(attribute.Name, Is.EqualTo("Description"));
-            Assert.That(attribute.Value, Is.EqualTo("Pump"));
-        }
+        attribute.Name.Should().Be("Description");
+        attribute.Value.Should().Be("Pump");
     }
+
 
     [Test]
     public void Constructor_MxDouble_ParsesCorrectly()
     {
         var attribute = new AttributeData("Level", 55.5);
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(attribute.Name, Is.EqualTo("Level"));
-            Assert.That(attribute.Value, Is.EqualTo(55.5));
-        }
+        attribute.Name.Should().Be("Level");
+        attribute.Value.Should().Be(55.5);
     }
 
     [Test]
@@ -40,11 +37,8 @@ public class AttributeDataTests
     {
         var attribute = new AttributeData("Status", true);
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(attribute.Name, Is.EqualTo("Status"));
-            Assert.That(attribute.Value, Is.True);
-        }
+        attribute.Name.Should().Be("Status");
+        attribute.Value.Should().Be(true);
     }
 
     [Test]
@@ -52,11 +46,8 @@ public class AttributeDataTests
     {
         var attribute = new AttributeData("Count", 10);
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(attribute.Name, Is.EqualTo("Count"));
-            Assert.That(attribute.Value, Is.EqualTo(10));
-        }
+        attribute.Name.Should().Be("Count");
+        attribute.Value.Should().Be(10);
     }
 
     [Test]
@@ -64,11 +55,8 @@ public class AttributeDataTests
     {
         var attribute = new AttributeData("Value", 1.5f);
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(attribute.Name, Is.EqualTo("Value"));
-            Assert.That(attribute.Value, Is.EqualTo(1.5f));
-        }
+        attribute.Name.Should().Be("Value");
+        attribute.Value.Should().Be(1.5f);
     }
 
     [Test]
@@ -78,11 +66,8 @@ public class AttributeDataTests
 
         var renamed = attribute.Rename("NewLevel");
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(renamed.Name, Is.EqualTo("NewLevel"));
-            Assert.That(renamed.Value, Is.EqualTo(55.5));
-        }
+        renamed.Name.Should().Be("NewLevel");
+        renamed.Value.Should().Be(55.5);
     }
 
     [Test]
@@ -91,9 +76,9 @@ public class AttributeDataTests
         // ReSharper disable once UseObjectOrCollectionInitializer
         var attribute = new AttributeData("Level", 55.5);
 
-        attribute.Update(60.0);
+        var updated = attribute.Update(60.0);
 
-        Assert.That(attribute.Value, Is.EqualTo(60.0));
+        updated.Value.Should().Be(60.0);
     }
 
     [Test]
@@ -102,53 +87,54 @@ public class AttributeDataTests
         var attrTrue = new AttributeData("Status", "true");
         var attrFalse = new AttributeData("Status", "false");
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(attrTrue.ToString(), Is.EqualTo("true"));
-            Assert.That(attrFalse.ToString(), Is.EqualTo("false"));
-        }
+        attrTrue.ToString().Should().Be("true");
+        attrFalse.ToString().Should().Be("false");
     }
 
     [Test]
     public void ToString_NullValue_ReturnsEmptyString()
     {
         var attribute = new AttributeData("Description", null);
-        Assert.That(attribute.ToString(), Is.EqualTo(string.Empty));
+        attribute.ToString().Should().Be(string.Empty);
     }
 
     [Test]
     public void Update_StringToInt_ConvertsCorrectly()
     {
         var attribute = new AttributeData("Count", 10);
-        attribute.Update("20");
-        Assert.Multiple(() =>
-        {
-            Assert.That(attribute.Value, Is.EqualTo(20));
-            Assert.That(attribute.Value, Is.TypeOf<int>());
-        });
+
+        var updated = attribute.Update("20");
+
+        updated.Value.Should().Be(20);
     }
 
     [Test]
     public void Update_DoubleToInt_ConvertsCorrectly()
     {
         var attribute = new AttributeData("Count", 10);
-        attribute.Update(20.5);
-        // Banker's rounding: 20.5 -> 20
-        Assert.That(attribute.Value, Is.EqualTo(20));
+
+        var updated = attribute.Update(20.5);
+
+        updated.Value.Should().Be(20);
     }
 
     [Test]
     public void Update_BoolToString_ConvertsCorrectly()
     {
         var attribute = new AttributeData("Flag", "maybe");
-        attribute.Update(true);
-        Assert.That(attribute.Value, Is.EqualTo("True")); // Convert.ChangeType(true, typeof(string)) -> "True"
+
+        var updated = attribute.Update(true);
+
+        updated.Value.Should().Be("True");
     }
 
     [Test]
     public void Update_InvalidFormat_ThrowsFormatException()
     {
         var attribute = new AttributeData("Count", 10);
-        Assert.Throws<FormatException>(() => attribute.Update("not a number"));
+
+        var act = () => attribute.Update("not a number");
+
+        act.Should().Throw<FormatException>();
     }
 }

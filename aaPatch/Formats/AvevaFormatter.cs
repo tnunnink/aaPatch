@@ -182,20 +182,6 @@ public class AvevaFormatter : IObjectFormater
     }
 
     /// <summary>
-    /// Determines whether an attribute is considered an identity attribute,
-    /// based on its name being "TagName" or "Template".
-    /// </summary>
-    /// <param name="attribute">
-    /// The attribute to evaluate. The attribute is an instance of <see cref="AttributeData"/>
-    /// containing a name and optional value.
-    /// </param>
-    /// <returns>
-    /// A boolean value indicating whether the specified attribute is an identity attribute.
-    /// Returns true if the attribute name is "TagName" or "Template"; otherwise, false.
-    /// </returns>
-    private static bool IsIdentity(AttributeData attribute) => attribute.Name is TagNameId or TemplateId;
-
-    /// <summary>
     /// Parses the given text representation of a value into an object of the specified type.
     /// This method attempts to convert the text into a corresponding value of the expected
     /// type, such as a boolean, integer, floating-point number, or string.
@@ -239,4 +225,18 @@ public class AvevaFormatter : IObjectFormater
             _ => typeof(string)
         };
     }
+
+    /// <summary>
+    /// Determines whether an attribute is considered an identity attribute,
+    /// based on its name being "TagName" or "Template".
+    /// </summary>
+    /// <param name="attribute">
+    /// The attribute to evaluate. The attribute is an instance of <see cref="AttributeData"/>
+    /// containing a name and optional value.
+    /// </param>
+    /// <returns>
+    /// A boolean value indicating whether the specified attribute is an identity attribute.
+    /// Returns true if the attribute name is "TagName" or "Template"; otherwise, false.
+    /// </returns>
+    private static bool IsIdentity(AttributeData attribute) => attribute.Name is TagNameId or TemplateId;
 }

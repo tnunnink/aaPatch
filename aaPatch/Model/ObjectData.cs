@@ -43,7 +43,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// <param name="name">The name of the attribute to retrieve. Use "Template" or "TagName" to access their corresponding values,
     /// or the name of a specific object attribute.</param>
     /// <returns>The value of the requested attribute if it exists, or null if the attribute is not defined.</returns>
-    public object? this[string name] => TryResolveAttribute(name, out var attribute) ? attribute.Value : null;
+    public AttributeValue? this[string name] => TryResolveAttribute(name, out var attribute) ? attribute.Value : null;
 
     /// <summary>
     /// Determines whether the object matches the specified filter condition.
@@ -232,7 +232,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
         if (!TryResolveAttribute(name, out var attribute))
             return;
 
-        attribute.Update(value);
+        _attributes[attribute.Name] = attribute.Update(value);
     }
 
     /// <summary>
@@ -255,7 +255,8 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
 
         var value = attribute.Value?.ToString();
         if (value is null || !value.Contains(find, comparison)) return;
-        attribute.Update(value.Replace(find, replace, comparison));
+        var patch = value.Replace(find, replace, comparison);
+        _attributes[attribute.Name] = attribute.Update(patch);
     }
 
     /// <summary>
@@ -272,7 +273,8 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
         {
             var value = attribute.Value?.ToString();
             if (value is null || !value.Contains(find, comparison)) continue;
-            attribute.Update(value.Replace(find, replace, comparison));
+            var patch = value.Replace(find, replace, comparison);
+            _attributes[attribute.Name] = attribute.Update(patch);
         }
     }
 

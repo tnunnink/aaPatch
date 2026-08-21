@@ -1,4 +1,5 @@
 using aaPatch.Model;
+using FluentAssertions;
 
 namespace aaPatch.Tests.Model;
 
@@ -20,13 +21,10 @@ public class ObjectDataTests
 
         var data = new ObjectData(attributes);
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(data["Template"], Is.EqualTo("$Pump"));
-            Assert.That(data["TagName"], Is.EqualTo("P_101"));
-            Assert.That(data.Select(a => a.Name), Has.Member("Description"));
-            Assert.That(data.Select(a => a.Value), Has.Member("Centrifugal Pump"));
-        }
+        data["Template"].Should().Be("$Pump");
+        data["TagName"].Should().Be("P_101");
+        data.Select(a => a.Name).Should().Contain("Description");
+        data.Select(a => a.Value).Should().Contain("Centrifugal Pump");
     }
 
     [Test]
@@ -36,7 +34,7 @@ public class ObjectDataTests
 
         var value = data["NonExistent"];
 
-        Assert.That(value, Is.Null);
+        value.Should().BeNull();
     }
 
     [Test]
@@ -44,13 +42,10 @@ public class ObjectDataTests
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(data["Template"], Is.EqualTo("$Pump"));
-            Assert.That(data["TagName"], Is.EqualTo("P_101"));
-            Assert.That(data["Description"], Is.EqualTo("Centrifugal Pump"));
-            Assert.That(data["HiHi"], Is.EqualTo(100.0));
-        }
+        data["Template"].Should().Be("$Pump");
+        data["TagName"].Should().Be("P_101");
+        data["Description"].Should().Be("Centrifugal Pump");
+        data["HiHi"].Should().Be(100.0);
     }
 
     [Test]
@@ -60,7 +55,7 @@ public class ObjectDataTests
 
         data.Apply("HiHi=120.0");
 
-        Assert.That(data["HiHi"], Is.EqualTo(120.0));
+        data["HiHi"].Should().Be(120.0);
     }
 
     [Test]
@@ -70,7 +65,7 @@ public class ObjectDataTests
 
         data.Apply("NewAttr=Value123");
 
-        Assert.That(data["NewAttr"], Is.Null);
+        data["NewAttr"].Should().BeNull();
     }
 
     [Test]
@@ -80,7 +75,7 @@ public class ObjectDataTests
 
         data.Apply("Description:Centrifugal=Positive Displacement");
 
-        Assert.That(data["Description"], Is.EqualTo("Positive Displacement Pump"));
+        data["Description"].Should().Be("Positive Displacement Pump");
     }
 
     [Test]
@@ -90,7 +85,7 @@ public class ObjectDataTests
 
         data.Apply("Description:CENTRIFUGAL=Positive Displacement");
 
-        Assert.That(data["Description"], Is.EqualTo("Positive Displacement Pump"));
+        data["Description"].Should().Be("Positive Displacement Pump");
     }
 
     [Test]
@@ -100,7 +95,7 @@ public class ObjectDataTests
 
         data.Apply("Description:CENTRIFUGAL=Positive Displacement", matchCase: true);
 
-        Assert.That(data["Description"], Is.EqualTo("Centrifugal Pump"));
+        data["Description"].Should().Be("Centrifugal Pump");
     }
 
     [Test]
@@ -110,7 +105,7 @@ public class ObjectDataTests
 
         data.Apply("Description:Centrifugal=Positive Displacement", matchCase: true);
 
-        Assert.That(data["Description"], Is.EqualTo("Positive Displacement Pump"));
+        data["Description"].Should().Be("Positive Displacement Pump");
     }
 
     [Test]
@@ -126,7 +121,7 @@ public class ObjectDataTests
         data.Apply("Attr1=Value2");
         data.Apply("Attr1=Value3");
 
-        Assert.That(data["Attr1"], Is.EqualTo("Value3"));
+        data["Attr1"].Should().Be("Value3");
     }
 
     [Test]
@@ -140,13 +135,11 @@ public class ObjectDataTests
             new("Attr2", "Match2")
         });
 
-        Assert.DoesNotThrow(() => data.Apply(":Match=Replaced"));
+        var act = () => data.Apply(":Match=Replaced");
+        act.Should().NotThrow();
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(data["Attr1"], Is.EqualTo("Replaced1"));
-            Assert.That(data["Attr2"], Is.EqualTo("Replaced2"));
-        }
+        data["Attr1"].Should().Be("Replaced1");
+        data["Attr2"].Should().Be("Replaced2");
     }
 
     [Test]
@@ -162,12 +155,9 @@ public class ObjectDataTests
         data.Apply(":Pump=Motor");
         data.Apply(":P_101=P_999");
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(data["Template"], Is.EqualTo("$Motor"));
-            Assert.That(data["TagName"], Is.EqualTo("P_999"));
-            Assert.That(data["Attr1"], Is.EqualTo("Motor_P_999"));
-        }
+        data["Template"].Should().Be("$Motor");
+        data["TagName"].Should().Be("P_999");
+        data["Attr1"].Should().Be("Motor_P_999");
     }
 
     [Test]
@@ -179,16 +169,13 @@ public class ObjectDataTests
             new("TagName", "P_101"),
         });
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(data["Template"], Is.EqualTo("$Pump"));
-            Assert.That(data["template"], Is.EqualTo("$Pump"));
-            Assert.That(data["TEMPLATE"], Is.EqualTo("$Pump"));
+        data["Template"].Should().Be("$Pump");
+        data["template"].Should().Be("$Pump");
+        data["TEMPLATE"].Should().Be("$Pump");
 
-            Assert.That(data["TagName"], Is.EqualTo("P_101"));
-            Assert.That(data["tagname"], Is.EqualTo("P_101"));
-            Assert.That(data["TAGNAME"], Is.EqualTo("P_101"));
-        }
+        data["TagName"].Should().Be("P_101");
+        data["tagname"].Should().Be("P_101");
+        data["TAGNAME"].Should().Be("P_101");
     }
 
     [Test]
@@ -198,11 +185,8 @@ public class ObjectDataTests
 
         var projected = data.Project(["TagName"]);
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(projected, Has.Count.EqualTo(1));
-            Assert.That(projected["TagName"], Is.EqualTo("P_101"));
-        }
+        projected.Should().HaveCount(1);
+        projected["TagName"].Should().Be("P_101");
     }
 
     [Test]
@@ -212,12 +196,9 @@ public class ObjectDataTests
 
         var projected = data.Project(["Template", "TagName"]);
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(projected, Has.Count.EqualTo(2));
-            Assert.That(projected["Template"], Is.EqualTo("$Pump"));
-            Assert.That(projected["TagName"], Is.EqualTo("P_101"));
-        }
+        projected.Should().HaveCount(2);
+        projected["Template"].Should().Be("$Pump");
+        projected["TagName"].Should().Be("P_101");
     }
 
     [Test]
@@ -227,12 +208,9 @@ public class ObjectDataTests
 
         var projected = data.Project("Description=Desc");
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(projected, Has.Count.EqualTo(1));
-            Assert.That(projected["Desc"], Is.EqualTo("Centrifugal Pump"));
-            Assert.That(projected["Description"], Is.Null);
-        }
+        projected.Should().HaveCount(1);
+        projected["Desc"].Should().Be("Centrifugal Pump");
+        projected["Description"].Should().BeNull();
     }
 
     [Test]
@@ -242,12 +220,9 @@ public class ObjectDataTests
 
         var projected = data.Project(["TagName", "Description=Desc"]);
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(projected, Has.Count.EqualTo(2));
-            Assert.That(projected["TagName"], Is.EqualTo("P_101"));
-            Assert.That(projected["Desc"], Is.EqualTo("Centrifugal Pump"));
-        }
+        projected.Should().HaveCount(2);
+        projected["TagName"].Should().Be("P_101");
+        projected["Desc"].Should().Be("Centrifugal Pump");
     }
 
     [Test]
@@ -257,12 +232,9 @@ public class ObjectDataTests
 
         var projected = data.Project(["tagname", "DESCRIPTION=Desc"]);
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(projected, Has.Count.EqualTo(2));
-            Assert.That(projected["TagName"], Is.EqualTo("P_101"));
-            Assert.That(projected["Desc"], Is.EqualTo("Centrifugal Pump"));
-        }
+        projected.Should().HaveCount(2);
+        projected["TagName"].Should().Be("P_101");
+        projected["Desc"].Should().Be("Centrifugal Pump");
     }
 
     [Test]
@@ -272,7 +244,7 @@ public class ObjectDataTests
 
         var projected = data.Project("HiHi");
 
-        Assert.That(projected["HiHi"], Is.EqualTo(100.0));
+        projected["HiHi"].Should().Be(100.0);
     }
 
     [Test]
@@ -282,7 +254,7 @@ public class ObjectDataTests
 
         var result = data.Project("NonExistent");
 
-        Assert.That(result, Is.Empty);
+        result.Should().BeEmpty();
     }
 
     [Test]
@@ -290,7 +262,8 @@ public class ObjectDataTests
     {
         var data = new ObjectData(CreateDefaultAttributes());
 
-        Assert.Throws<ArgumentException>(() => data.Project("TagName=Same", "Template=Same"));
+        var act = () => data.Project("TagName=Same", "Template=Same");
+        act.Should().Throw<ArgumentException>();
     }
 
     [Test]
@@ -300,7 +273,7 @@ public class ObjectDataTests
 
         var result = data.Project("=Alias");
 
-        Assert.That(result, Is.Empty);
+        result.Should().BeEmpty();
     }
 
     [Test]
@@ -313,8 +286,8 @@ public class ObjectDataTests
         });
 
         // Filter value is string "100.5", should match against double 100.5
-        Assert.That(data.Match("Value=100.5"), Is.True);
-        Assert.That(data.Match("Value=100*"), Is.True);
+        data.Match("Value=100.5").Should().BeTrue();
+        data.Match("Value=100*").Should().BeTrue();
     }
 
     [Test]
@@ -328,11 +301,8 @@ public class ObjectDataTests
 
         // Patch with string "false", should update the boolean value
         data.Apply("Enabled=false");
-        Assert.Multiple(() =>
-        {
-            Assert.That(data["Enabled"], Is.EqualTo(false));
-            Assert.That(data["Enabled"], Is.TypeOf<bool>());
-        });
+        data["Enabled"].Should().Be(false);
+        data["Enabled"]?.ValueType.Should().Be(typeof(bool));
     }
 
     [Test]
@@ -346,10 +316,7 @@ public class ObjectDataTests
 
         // Replace "1" with "2" -> "20"
         data.Apply("Count:1=2");
-        Assert.Multiple(() =>
-        {
-            Assert.That(data["Count"], Is.EqualTo(20));
-            Assert.That(data["Count"], Is.TypeOf<int>());
-        });
+        data["Count"].Should().Be(20);
+        data["Count"]?.ValueType.Should().Be(typeof(int));
     }
 }

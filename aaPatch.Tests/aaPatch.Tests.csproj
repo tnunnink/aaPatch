@@ -13,6 +13,7 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+        <PackageReference Include="FluentAssertions" Version="7.2.2" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
         <PackageReference Include="NUnit" Version="4.5.1" />
         <PackageReference Include="NUnit.Analyzers" Version="4.12.0">
@@ -20,6 +21,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="NUnit3TestAdapter" Version="6.2.0" />
+        <PackageReference Include="System.Linq.Dynamic.Core" Version="1.7.3" />
         <PackageReference Include="Verify.NUnit" Version="31.16.1" />
     </ItemGroup>
 
@@ -41,25 +43,19 @@
         <None Update="Formatters\AvevaFormatterTests.Write_WithTypedValues_MatchesVerified.verified.txt">
           <DependentUpon>AvevaFormatterTests.cs</DependentUpon>
         </None>
-        <None Update="Integration\ConversionTests.AvevaToCsv_RoundTrip_AvevaToCsv.verified.txt">
-          <DependentUpon>ConversionTests.cs</DependentUpon>
-        </None>
-        <None Update="Integration\ConversionTests.AvevaToJson_RoundTrip_AvevaToJson.verified.txt">
-          <DependentUpon>ConversionTests.cs</DependentUpon>
-        </None>
-        <None Update="Integration\ConversionTests.CsvToAveva_RoundTrip_CsvToAveva.verified.txt">
-          <DependentUpon>ConversionTests.cs</DependentUpon>
-        </None>
-        <None Update="Integration\ConversionTests.CsvToJson_RoundTrip_CsvToJson.verified.txt">
-          <DependentUpon>ConversionTests.cs</DependentUpon>
-        </None>
-        <None Update="Integration\ConversionTests.JsonToAveva_RoundTrip_JsonToAveva.verified.txt">
-          <DependentUpon>ConversionTests.cs</DependentUpon>
-        </None>
+        <None Remove="Formatters\**" />
     </ItemGroup>
 
     <ItemGroup>
       <Folder Include="Files\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="Formatters\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="Formatters\**" />
     </ItemGroup>
 
 </Project>

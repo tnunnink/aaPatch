@@ -21,10 +21,10 @@ public class AttributeData
         var index = input.IndexOf('=');
 
         if (index < 0)
-            throw new ArgumentException("");
+            throw new ArgumentException("Attribute expression must contain '=' character.", nameof(input));
 
-        Name = input[..index];
-        Value = input[(index + 1)..];
+        Name = input[..index].Trim();
+        Value = new AttributeValue(input[(index + 1)..].Trim());
     }
 
     /// <summary>
@@ -39,7 +39,7 @@ public class AttributeData
             throw new ArgumentException("Name cannot be null or empty.", nameof(name));
 
         Name = name;
-        Value = value;
+        Value = new AttributeValue(value);
     }
 
     /// <summary>
@@ -61,7 +61,7 @@ public class AttributeData
     /// also be null. The type of the returned object can vary and depends on
     /// the type specified in the header (e.g., string, int, bool, etc.).
     /// </remarks>
-    public object? Value { get; private set; }
+    public AttributeValue Value { get; }
 
     /// <summary>
     /// Creates a new <see cref="AttributeData"/> instance with the specified name while preserving the current value.
@@ -80,17 +80,13 @@ public class AttributeData
     public AttributeData Duplicate() => new(Name, Value);
 
     /// <summary>
-    /// Updates the value of the attribute by converting it to the current type of the attribute's value
-    /// using the invariant culture.
+    /// Creates a new instance of the <see cref="AttributeData"/> class with the specified name and an updated value.
+    /// The value is converted to the same type as the current value, if applicable.
     /// </summary>
-    /// <param name="value">The new value to update the attribute with. The value is converted to the type of the existing value, or to a string type if the existing value is null.</param>
-    /// <exception cref="InvalidCastException">Thrown when the value cannot be converted to the type of the existing attribute's value.</exception>
-    /// <exception cref="FormatException">Thrown when the format of the value is invalid for the conversion to the target type.</exception>
-    public void Update(object? value)
-    {
-        var type = Value?.GetType() ?? typeof(string);
-        Value = Convert.ChangeType(value, type, CultureInfo.InvariantCulture);
-    }
+    /// <param name="value">The new value to update. Can be null or a value convertible to the type of the current value.</param>
+    /// <returns>A new instance of the <see cref="AttributeData"/> class with the updated value.</returns>
+    /// <exception cref="InvalidCastException">Thrown if the value cannot be converted to the type of the current value.</exception>
+    public AttributeData Update(AttributeValue value) => new(Name, value.CastTo(Value.ValueType));
 
     /// <summary>
     /// Returns a string representation of the current <see cref="AttributeData"/> instance.
@@ -103,15 +99,7 @@ public class AttributeData
     /// <returns>
     /// A string representation of the attribute's value, or an empty string if the value is null.
     /// </returns>
-    public override string ToString()
-    {
-        if (Value is bool b)
-        {
-            return b ? "true" : "false";
-        }
-
-        return Value?.ToString() ?? string.Empty;
-    }
+    public override string ToString() => Value.ToString();
 
     /// <summary>
     /// Converts a string to an instance of the <see cref="AttributeData"/> class.
