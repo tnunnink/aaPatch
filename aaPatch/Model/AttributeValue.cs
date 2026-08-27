@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Linq.Dynamic.Core.CustomTypeProviders;
 
 namespace aaPatch.Model;
 
@@ -7,6 +8,7 @@ namespace aaPatch.Model;
 /// with various data types. This class is designed to encapsulate and unify different
 /// primitive and object types into a single model.
 /// </summary>
+[DynamicLinqType]
 public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
 {
     /// <summary>
@@ -37,18 +39,46 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     /// This property returns the runtime type of the value stored within, or null if no value is set.
     /// It enables type inspection for the encapsulated data consistently.
     /// </summary>
-    public Type ValueType => _value?.GetType() ?? typeof(object);
+    public Type Type => _value?.GetType() ?? typeof(object);
 
     /// <summary>
     /// Converts the wrapped value of the current <see cref="AttributeValue"/> instance to the specified type
     /// and returns a new <see cref="AttributeValue"/> instance containing the converted value.
     /// </summary>
-    /// <param name="type">The <see cref="Type"/> to which the current value should be cast.
+    /// <param name="type">The <see cref="System.Type"/> to which the current value should be cast.
     /// Must be a valid type compatible with the current value.</param>
     /// <returns>A new <see cref="AttributeValue"/> instance containing the value cast to the specified type.</returns>
-    public AttributeValue CastTo(Type type)
+    public AttributeValue As(Type type) => new(Convert.ChangeType(_value, type));
+
+    /// <summary>
+    /// Replaces all occurrences of the specified substring in the current value with a new string
+    /// and returns a new <see cref="AttributeValue"/> instance containing the replaced value.
+    /// </summary>
+    /// <param name="find">The substring to locate in the current value.</param>
+    /// <param name="replace">The string to replace all occurrences of <paramref name="find"/>.</param>
+    /// <returns>A new <see cref="AttributeValue"/> instance containing the value after replacing
+    /// occurrences of <paramref name="find"/> with <paramref name="replace"/>.</returns>
+    public AttributeValue Replace(string find, string replace) => Replace(find, replace, false);
+
+    /// <summary>
+    /// Replaces all occurrences of a specified string in the current <see cref="AttributeValue"/>
+    /// with another specified string and returns a new <see cref="AttributeValue"/> containing
+    /// the result.
+    /// </summary>
+    /// <param name="find">The string to be replaced.</param>
+    /// <param name="replace">The string to replace all occurrences of <paramref name="find"/>.</param>
+    /// <param name="match">If true, performs case-sensitive matching; if false, performs case-insensitive matching.</param>
+    /// <returns>A new <see cref="AttributeValue"/> with the result of the replacement operation.</returns>
+    public AttributeValue Replace(string find, string replace, bool match)
     {
-        var typed = Convert.ChangeType(_value, type);
+        if (_value is null)
+            return this;
+
+        var comparison = match ? StringComparison.InvariantCulture : StringComparison.InvariantCultureIgnoreCase;
+
+        var text = ToString();
+        var result = text.Replace(find, replace, comparison);
+        var typed = Convert.ChangeType(result, _value.GetType());
         return new AttributeValue(typed);
     }
 
@@ -247,6 +277,13 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     /// <param name="value">The boolean value to convert.</param>
     /// <returns>A new <see cref="AttributeValue"/> instance wrapping the specified boolean value.</returns>
     public static implicit operator AttributeValue(bool value) => new(value);
+
+    /// <summary>
+    /// Implicitly converts a short value to an <see cref="AttributeValue"/> instance.
+    /// </summary>
+    /// <param name="value">The short value to convert.</param>
+    /// <returns>A new <see cref="AttributeValue"/> instance wrapping the specified short value.</returns>
+    public static implicit operator AttributeValue(short value) => new(value);
 
     /// <summary>
     /// Implicitly converts an integer value to an <see cref="AttributeValue"/> instance.

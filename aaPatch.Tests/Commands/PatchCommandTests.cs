@@ -28,8 +28,8 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Patches = ["Description=Updated Pump"],
-            Filters = ["template=$Pump"]
+            Patches = ["{Description} := Updated Pump"],
+            Filter = "{template} = $Pump"
         };
 
         await command.ExecuteAsync(console);
@@ -63,7 +63,7 @@ public class PatchCommandTests
         {
             InputFile = inputFile,
             Patches = ["Description=File Updated"],
-            Filters = ["Template=$Pump"]
+            Filter = "Template=$Pump"
         };
 
         await command.ExecuteAsync(console);
@@ -188,7 +188,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filters = ["Description=Centrifugal*"],
+            Filter = "{Description}.Like(Centrifugal*)",
             Patches = ["HiHi=200.0"]
         };
 
@@ -277,7 +277,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filters = ["Template=$Pump"]
+            Filter = "Template=$Pump"
         };
 
         await command.ExecuteAsync(console);
@@ -297,7 +297,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filters = ["P_101"]
+            Filter = "P_101"
         };
 
         await command.ExecuteAsync(console);
@@ -316,7 +316,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filters = ["NonExistent"]
+            Filter = "NonExistent"
         };
 
         await command.ExecuteAsync(console);
@@ -422,7 +422,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filters = ["Template=$Pump"],
+            Filter = "Template=$Pump",
             Selections = ["Template", "TagName", "HiHi"]
         };
 
@@ -489,7 +489,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Additions = ["NewField=123"]
+            Selections = ["NewField=123"]
         };
 
         await command.ExecuteAsync(console);
@@ -508,7 +508,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Additions = ["NewField=123"]
+            Selections = ["NewField=123"]
         };
 
         await command.ExecuteAsync(console);
@@ -524,7 +524,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Additions = ["NewField=123"],
+            Selections = ["NewField=123"],
             Format = Format.Json
         };
 

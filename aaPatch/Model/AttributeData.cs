@@ -1,6 +1,4 @@
-﻿using System.Globalization;
-
-namespace aaPatch.Model;
+﻿namespace aaPatch.Model;
 
 /// <summary>
 /// Represents attribute data consisting of a header, a type, a name, and an associated value.
@@ -13,20 +11,6 @@ namespace aaPatch.Model;
 /// </remarks>
 public class AttributeData
 {
-    public AttributeData(string input)
-    {
-        if (string.IsNullOrWhiteSpace(input))
-            throw new ArgumentException("Attribute expression can not be null, empty, or white space.", nameof(input));
-
-        var index = input.IndexOf('=');
-
-        if (index < 0)
-            throw new ArgumentException("Attribute expression must contain '=' character.", nameof(input));
-
-        Name = input[..index].Trim();
-        Value = new AttributeValue(input[(index + 1)..].Trim());
-    }
-
     /// <summary>
     /// Initializes a new instance of the <see cref="AttributeData"/> class with the specified name and value.
     /// </summary>
@@ -77,7 +61,7 @@ public class AttributeData
     /// <returns>
     /// A new <see cref="AttributeData"/> instance with the same header and value as the current instance.
     /// </returns>
-    public AttributeData Duplicate() => new(Name, Value);
+    public AttributeData Duplicate() => new(Name, new AttributeValue(Value));
 
     /// <summary>
     /// Creates a new instance of the <see cref="AttributeData"/> class with the specified name and an updated value.
@@ -86,7 +70,7 @@ public class AttributeData
     /// <param name="value">The new value to update. Can be null or a value convertible to the type of the current value.</param>
     /// <returns>A new instance of the <see cref="AttributeData"/> class with the updated value.</returns>
     /// <exception cref="InvalidCastException">Thrown if the value cannot be converted to the type of the current value.</exception>
-    public AttributeData Update(AttributeValue value) => new(Name, value.CastTo(Value.ValueType));
+    public AttributeData Update(AttributeValue value) => new(Name, value.As(Value.Type));
 
     /// <summary>
     /// Returns a string representation of the current <see cref="AttributeData"/> instance.
@@ -100,14 +84,4 @@ public class AttributeData
     /// A string representation of the attribute's value, or an empty string if the value is null.
     /// </returns>
     public override string ToString() => Value.ToString();
-
-    /// <summary>
-    /// Converts a string to an instance of the <see cref="AttributeData"/> class.
-    /// </summary>
-    /// <param name="text">The input string to be converted into an <see cref="AttributeData"/> instance. Cannot be null or empty.</param>
-    /// <returns>
-    /// A new instance of the <see cref="AttributeData"/> class initialized with the specified string.
-    /// </returns>
-    /// <exception cref="ArgumentException">Thrown when the input string is null, empty, or improperly formatted.</exception>
-    public static implicit operator AttributeData(string text) => new(text);
 }

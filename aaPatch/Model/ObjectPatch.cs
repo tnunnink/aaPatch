@@ -1,109 +1,91 @@
 ﻿namespace aaPatch.Model;
 
 /// <summary>
-/// Represents a patch operation to be applied to Galaxy dump object attributes.
-/// Parses patch strings in the format "Attribute=Value" for direct assignment or "Attribute:Find=Replace" for find-replace operations.
+/// Represents a parsed patch expression that can modify object attributes. A patch can be either global
+/// (applied to all objects) or targeted (applied to a specific attribute using the '{Attribute} := Expression' syntax).
 /// </summary>
 public sealed record ObjectPatch
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="ObjectPatch"/> class by parsing a patch expression.
+    /// Gets the target attribute name for this patch, or null if this is a global patch.
+    /// For targeted patches using '{Attribute} := Expression' syntax, this contains the attribute name without braces.
     /// </summary>
-    /// <param name="input">
-    /// The patch expression string in the format "Attribute=Value" for direct assignment or "Attribute:Find=Replace" for find-replace operations.
-    /// </param>
-    /// <exception cref="ArgumentException">Thrown when the input is null, empty, whitespace, or has an invalid format.</exception>
+    private readonly string? _target;
+
+    /// <summary>
+    /// Gets the expression that will be evaluated to produce the patch value.
+    /// This expression is parsed from either the entire input string (for global patches)
+    /// or the portion after the ':=' operator (for targeted patches).
+    /// </summary>
+    private readonly ObjectExpression _expression;
+
+    /// <summary>
+    /// Stores a compiled delegate representing the logic for modifying an attribute's value based on
+    /// the patch expression. If null, the patch expression has not been compiled yet.
+    /// </summary>
+    private Func<AttributeValue, object?>? _patch;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ObjectPatch"/> class by parsing a patch expression string.
+    /// Supports both global patches (e.g., "SomeExpression") and targeted patches (e.g., "{AttributeName} := SomeExpression").
+    /// </summary>
+    /// <param name="input">The patch expression string to parse.</param>
+    /// <exception cref="ArgumentException">Thrown when the input is null, empty, whitespace, or has invalid syntax.</exception>
     public ObjectPatch(string input)
     {
         if (string.IsNullOrWhiteSpace(input))
             throw new ArgumentException("Patch expression cannot be null, empty, or whitespace.", nameof(input));
 
-        var parts = input.Split([":", "="], StringSplitOptions.None);
+        var assignmentIndex = input.IndexOf(":=", StringComparison.Ordinal);
 
-        if (parts.Length is < 2 or > 3)
-            throw new ArgumentException("Invalid patch pattern...");
+        if (assignmentIndex < 0)
+        {
+            _target = null;
+            _expression = new ObjectExpression(input.Trim());
+            return;
+        }
 
-        Attribute = parts[0];
-        Find = parts.Length == 3 ? parts[1] : null;
-        Replacement = parts.Length == 3 ? parts[2] : parts[1];
+        var target = input[..assignmentIndex].Trim();
+        var expression = input[(assignmentIndex + 2)..].Trim();
+
+        if (!target.StartsWith('{') || !target.EndsWith('}'))
+            throw new ArgumentException(
+                "A targeted patch must use '{Attribute} := Expression'.");
+
+        if (expression.Length == 0)
+            throw new ArgumentException("Patch expression cannot be empty.");
+
+        _target = target[1..^1].Trim();
+        _expression = new ObjectExpression(expression);
     }
 
     /// <summary>
-    /// Gets the type of the patch operation represented by this instance.
+    /// Applies the current patch to the specified attribute.
+    /// The method evaluates the patch expression and updates the attribute's value
+    /// if the target matches or if the patch is global.
     /// </summary>
-    /// <remarks>
-    /// The patch type is determined based on the combination of values in the
-    /// <see cref="Attribute"/> and <see cref="Find"/> properties.
-    /// </remarks>
-    public PatchType Type => DetermineType();
-
-    /// <summary>
-    /// Gets the name of the attribute to be patched.
-    /// </summary>
-    public string Attribute { get; }
-
-    /// <summary>
-    /// Gets the text to find for replacement operations.
-    /// Returns null when using direct assignment format ("Attribute=Value").
-    /// </summary>
-    public string? Find { get; }
-
-    /// <summary>
-    /// Gets the replacement value or text to use in the patch operation.
-    /// For direct assignment, this is the new value. For find-replace, this is the replacement text.
-    /// </summary>
-    public string Replacement { get; }
-
-    /// <summary>
-    /// Implicitly converts a string to an instance of the <see cref="ObjectPatch"/> class.
-    /// </summary>
-    /// <param name="text">
-    /// The patch expression string in the format "Attribute=Value" for direct assignment or "Attribute:Find=Replace" for find-replace operations.
-    /// </param>
-    /// <returns>
-    /// A new <see cref="ObjectPatch"/> instance initialized with the specified patch expression string.
-    /// </returns>
-    public static implicit operator ObjectPatch(string text) => new(text);
-
-    /// <summary>
-    /// Determines the type of patch operation based on the values of the <see cref="Attribute"/> and <see cref="Find"/> properties.
-    /// </summary>
-    /// <returns>
-    /// A <see cref="PatchType"/> value indicating the type of the patch operation:
-    /// <see cref="PatchType.Assign"/> if there is a valid attribute with no find value,
-    /// <see cref="PatchType.Replace"/> if both attribute and find values are present,
-    /// or <see cref="PatchType.ReplaceAll"/> if the attribute is empty and only the find value is present.
-    /// </returns>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the combination of <see cref="Attribute"/> and <see cref="Find"/> values does not conform to a valid patch type.
-    /// </exception>
-    private PatchType DetermineType()
+    /// <param name="attribute">The attribute data to which the patch is applied.</param>
+    /// <returns>A new <see cref="AttributeData"/> instance with the updated value or a duplicate
+    /// of the original attribute if no update is performed.</returns>
+    public AttributeData Apply(AttributeData attribute)
     {
-        if (string.IsNullOrWhiteSpace(Attribute) && !string.IsNullOrEmpty(Find))
-            return PatchType.ReplaceAll;
+        var patch = _patch ??= _expression.Compile<AttributeValue, object?>();
 
-        if (!string.IsNullOrWhiteSpace(Attribute) && !string.IsNullOrEmpty(Find))
-            return PatchType.Replace;
+        // Only update if the target is not specified (global patch)
+        // or if the target is specified and matches the provided attribute name.
+        if (_target is null || StringComparer.OrdinalIgnoreCase.Equals(_target, attribute.Name))
+        {
+            var value = patch.Invoke(attribute.Value);
+            return attribute.Update(new AttributeValue(value));
+        }
 
-        if (!string.IsNullOrWhiteSpace(Attribute) && string.IsNullOrEmpty(Find))
-            return PatchType.Assign;
-        
-        throw new InvalidOperationException("Unable to determine patch type: invalid combination of Attribute and Find values.");
+        return attribute.Duplicate();
     }
-}
 
-/// <summary>
-/// Enum representing the type of patch operation that can be performed.
-/// </summary>
-/// <remarks>
-/// The available patch operation types are:
-/// - Assign: Represents a direct assignment operation where an attribute is set to a specified value.
-/// - Replace: Represents a find-and-replace operation where a specific substring within an attribute is replaced.
-/// - ReplaceAll: Represents a global replacement operation where a pattern is replaced across all relevant attributes.
-/// </remarks>
-public enum PatchType
-{
-    Assign,
-    Replace,
-    ReplaceAll
+    /// <summary>
+    /// Implicitly converts a string to an <see cref="ObjectPatch"/> instance by parsing the string as a patch expression.
+    /// </summary>
+    /// <param name="text">The patch expression string to convert.</param>
+    /// <returns>A new <see cref="ObjectPatch"/> instance representing the parsed expression.</returns>
+    public static implicit operator ObjectPatch(string text) => new(text);
 }

@@ -1,3 +1,4 @@
+using aaPatch.Extensions;
 using aaPatch.Formats;
 using aaPatch.Model;
 using CliFx;
@@ -34,7 +35,7 @@ public partial class PatchCommand : ICommand
     /// Supports wildcard patterns. If not specified, all objects are matched.
     /// </summary>
     [CommandOption("where", 'w', Description = $"Filter objects having specified values. {AdditionInfoMessage}")]
-    public IReadOnlyCollection<ObjectFilter> Filters { get; set; } = [];
+    public ObjectExpression? Filter { get; set; }
 
     /// <summary>
     /// Gets the collection of patches to apply to matching objects.
@@ -49,14 +50,7 @@ public partial class PatchCommand : ICommand
     /// If not specified, all attributes are included.
     /// </summary>
     [CommandOption("select", 's', Description = $"Attributes to include in output objects. {AdditionInfoMessage}")]
-    public IReadOnlyList<FieldSelection> Selections { get; set; } = [];
-
-    /// <summary>
-    /// Gets the collection of static attributes to add to each output object.
-    /// Format: 'Attribute=Value'.
-    /// </summary>
-    [CommandOption("add", 'a', Description = $"Attributes to append to output objects. {AdditionInfoMessage}")]
-    public IReadOnlyList<AttributeData> Additions { get; set; } = [];
+    public IReadOnlyList<ObjectProjection> Selections { get; set; } = [];
 
     /// <summary>
     /// Gets or sets a collection of attribute-based filters applied to objects in the Galaxy CSV.
@@ -91,19 +85,18 @@ public partial class PatchCommand : ICommand
 
         try
         {
-            var csv = InputFile is null
+            var input = InputFile is null
                 ? await console.Input.ReadToEndAsync()
                 : await File.ReadAllTextAsync(InputFile, cancellation);
 
             var formatter = new FormatRouter();
-            var objects = formatter.Read(csv).ToList();
+            var objects = formatter.Read(input).ToList();
 
             var data = objects
-                .Where(x => x.Match([.. Filters])) // Filter object by value
-                .Where(x => x.Has(Attributes)) // Filter objects by schema
-                .Select(x => x.Apply(Patches, MatchCase)) // Patch objects
-                .Select(x => x.Add([.. Additions])) // Add fields
-                .Select(x => Selections.Count > 0 ? x.Project([.. Selections]) : x) // Select fields
+                .Filter(Filter)
+                .Having(Attributes)
+                .Patch(Patches) //todo add match case
+                .Project(Selections)
                 .ToList();
 
             var content = formatter.Write(data, Format);

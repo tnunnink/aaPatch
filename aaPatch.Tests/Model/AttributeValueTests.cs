@@ -78,7 +78,7 @@ public class AttributeValueTests
     {
         var attribute = new AttributeValue(value);
 
-        var type = attribute.ValueType;
+        var type = attribute.Type;
 
         type.Should().Be(expected);
     }
