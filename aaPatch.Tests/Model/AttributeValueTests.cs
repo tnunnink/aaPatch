@@ -1,4 +1,4 @@
-﻿using aaPatch.Model;
+using aaPatch.Model;
 using FluentAssertions;
 
 namespace aaPatch.Tests.Model;
@@ -6,12 +6,64 @@ namespace aaPatch.Tests.Model;
 [TestFixture]
 public class AttributeValueTests
 {
+    #region Constructor and Properties
+
     [Test]
     public void Constructor_ValidString_ShouldBeExpectedValue()
     {
         var value = new AttributeValue("Test");
 
         value.ToString().Should().Be("Test");
+    }
+
+    [Test]
+    public void Constructor_WithAttributeValue_ShouldExtractUnderlyingValue()
+    {
+        var original = new AttributeValue(42);
+        var wrapped = new AttributeValue(original);
+
+        wrapped.Type.Should().Be(typeof(int));
+        wrapped.ToString().Should().Be("42");
+    }
+
+    [Test]
+    public void IsNull_NullValue_ShouldBeTrue()
+    {
+        var attribute = new AttributeValue(null!);
+
+        var result = attribute.IsNull;
+
+        result.Should().BeTrue();
+    }
+
+    [Test]
+    public void IsNull_NonNullValue_ShouldBeFalse()
+    {
+        var attribute = new AttributeValue(123);
+
+        var result = attribute.IsNull;
+
+        result.Should().BeFalse();
+    }
+
+    [Test]
+    [TestCase("", typeof(string))]
+    [TestCase("   ", typeof(string))]
+    [TestCase(true, typeof(bool))]
+    [TestCase(false, typeof(bool))]
+    [TestCase(0, typeof(int))]
+    [TestCase(1234, typeof(int))]
+    [TestCase(-1234, typeof(int))]
+    [TestCase(999999999999, typeof(long))]
+    [TestCase(123.456, typeof(double))]
+    [TestCase("This is a test value", typeof(string))]
+    public void ValueType_WhenCalled_ShouldBeExpectedValue(object value, Type expected)
+    {
+        var attribute = new AttributeValue(value);
+
+        var type = attribute.Type;
+
+        type.Should().Be(expected);
     }
 
     [Test]
@@ -42,47 +94,43 @@ public class AttributeValueTests
 
         result.Should().BeEmpty();
     }
-    
+
+    #endregion
+
+    #region Conversions and Implicit Operators
+
     [Test]
-    public void IsNull_NullValue_ShouldBeTrue()
+    public void As_ConvertType_ShouldReturnNewAttributeValueWithConvertedType()
     {
-        var attribute = new AttributeValue(null!);
+        var value = new AttributeValue("123");
+        var converted = value.As(typeof(int));
 
-        var result = attribute.IsNull;
-
-        result.Should().BeTrue();
+        converted.Type.Should().Be(typeof(int));
+        converted.ToString().Should().Be("123");
     }
-    
+
     [Test]
-    public void IsNull_NonNullValue_ShouldBeFalse()
+    public void ImplicitOperator_FromDifferentTypes_ShouldCreateAttributeValue()
     {
-        var attribute = new AttributeValue(123);
+        AttributeValue b = true;
+        AttributeValue s = (short)1;
+        AttributeValue i = 10;
+        AttributeValue l = 100L;
+        AttributeValue d = 1.5;
+        AttributeValue str = "test";
 
-        var result = attribute.IsNull;
-
-        result.Should().BeFalse();
+        b.Type.Should().Be(typeof(bool));
+        s.Type.Should().Be(typeof(short));
+        i.Type.Should().Be(typeof(int));
+        l.Type.Should().Be(typeof(long));
+        d.Type.Should().Be(typeof(double));
+        str.Type.Should().Be(typeof(string));
     }
-    
-    [Test]
-    [TestCase("", typeof(string))]
-    [TestCase("   ", typeof(string))]
-    [TestCase(true, typeof(bool))]
-    [TestCase(false, typeof(bool))]
-    [TestCase(0, typeof(int))]
-    [TestCase(1234, typeof(int))]
-    [TestCase(-1234, typeof(int))]
-    [TestCase(999999999999, typeof(long))]
-    [TestCase(123.456, typeof(double))]
-    [TestCase("This is a test value", typeof(string))]
-    public void ValueType_WhenCalled_ShouldBeExpectedValue(object value, Type expected)
-    {
-        var attribute = new AttributeValue(value);
 
-        var type = attribute.Type;
+    #endregion
 
-        type.Should().Be(expected);
-    }
-    
+    #region Equality and HashCode
+
     [Test]
     public void EqualityOperator_EqualStringValues_ShouldBeTrue()
     {
@@ -216,6 +264,17 @@ public class AttributeValueTests
     }
 
     [Test]
+    public void Equals_BothNullValues_ShouldBeTrue()
+    {
+        var value1 = new AttributeValue(null);
+        var value2 = new AttributeValue(null);
+
+        var result = value1.Equals(value2);
+
+        result.Should().BeTrue();
+    }
+
+    [Test]
     public void Equals_EqualValues_ShouldBeTrue()
     {
         var value1 = new AttributeValue("test");
@@ -257,7 +316,7 @@ public class AttributeValueTests
 
         result.Should().BeTrue();
     }
-    
+
     [Test]
     public void Equals_NotEqualValueStringVsNumeric_ShouldBeFalse()
     {
@@ -268,7 +327,7 @@ public class AttributeValueTests
 
         result.Should().BeFalse();
     }
-    
+
     [Test]
     public void Equals_EqualValueStringVsBoolean_ShouldBeTrue()
     {
@@ -279,7 +338,7 @@ public class AttributeValueTests
 
         result.Should().BeTrue();
     }
-    
+
     [Test]
     public void Equals_NotEqualValueStringVsBoolean_ShouldBeFalse()
     {
@@ -301,7 +360,7 @@ public class AttributeValueTests
 
         result.Should().BeTrue();
     }
-    
+
     [Test]
     public void Equals_NotEqualDifferentNumericTypes_ShouldBeFalse()
     {
@@ -324,6 +383,10 @@ public class AttributeValueTests
 
         hash1.Should().Be(hash2);
     }
+
+    #endregion
+
+    #region Comparison Operators and CompareTo
 
     [Test]
     public void LessThanOperator_SmallerValue_ShouldBeTrue()
@@ -467,7 +530,7 @@ public class AttributeValueTests
 
         result.Should().BeTrue();
     }
-    
+
     [Test]
     public void ComparisonOperators_StringNumericType_ShouldWorkCorrectly()
     {
@@ -478,7 +541,7 @@ public class AttributeValueTests
 
         result.Should().BeTrue();
     }
-    
+
     [Test]
     public void ComparisonOperators_NonNumericStringComparedToNumber_ThrowsException()
     {
@@ -522,5 +585,95 @@ public class AttributeValueTests
 
         result.Should().BePositive();
     }
-    
+
+    [Test]
+    public void CompareTo_BothNullValues_ShouldReturnZero()
+    {
+        var value1 = new AttributeValue(null);
+        var value2 = new AttributeValue(null);
+
+        var result = value1.CompareTo(value2);
+
+        result.Should().Be(0);
+    }
+
+    [Test]
+    public void CompareTo_Null_ShouldReturnPositive()
+    {
+        var value = new AttributeValue(42);
+        var result = value.CompareTo(null);
+        result.Should().Be(1);
+    }
+
+    #endregion
+
+    #region String Operations
+
+    [Test]
+    [TestCase("Hello World", "Hello", true, true)]
+    [TestCase("Hello World", "hello", false, true)]
+    [TestCase("Hello World", "hello", true, false)]
+    [TestCase(null, "test", false, false)]
+    public void Contains_WhenCalled_ShouldReturnExpectedResult(object? value, string text, bool matchCase, bool expected)
+    {
+        var attribute = new AttributeValue(value);
+        attribute.Contains(text, matchCase).Should().Be(expected);
+        if (!matchCase)
+        {
+            attribute.Contains(text).Should().Be(expected);
+        }
+    }
+
+    [Test]
+    [TestCase("abcde", "a%e", true)]
+    [TestCase("abcde", "a?c%e", true)]
+    [TestCase("abcde", "a%z", false)]
+    [TestCase("abcde", "bc", false)] // No wildcards, full match required
+    [TestCase(null, "%", false)]
+    public void Like_WhenCalled_ShouldReturnExpectedResult(object? value, string pattern, bool expected)
+    {
+        var attribute = new AttributeValue(value);
+        attribute.Like(pattern).Should().Be(expected);
+    }
+
+    [Test]
+    [TestCase("123-456", @"^\d{3}-\d{3}$", true)]
+    [TestCase("abc", @"^\d+$", false)]
+    [TestCase(null, ".*", false)]
+    public void Matches_WhenCalled_ShouldReturnExpectedResult(object? value, string pattern, bool expected)
+    {
+        var attribute = new AttributeValue(value);
+        attribute.Matches(pattern).Should().Be(expected);
+    }
+
+    [Test]
+    [TestCase("Hello World", "World", "Universe", true, "Hello Universe")]
+    [TestCase("Hello World", "world", "Universe", false, "Hello Universe")]
+    [TestCase("Hello World", "world", "Universe", true, "Hello World")]
+    [TestCase("123", "2", "4", false, "143")]
+    [TestCase(123, "2", "4", false, 143)]
+    [TestCase(null, "a", "b", false, null)]
+    public void Replace_WhenCalled_ShouldReturnExpectedResult(object? value, string find, string replace, bool matchCase, object? expected)
+    {
+        var attribute = new AttributeValue(value);
+        var result = attribute.Replace(find, replace, matchCase);
+
+        if (value == null)
+        {
+            result.IsNull.Should().BeTrue();
+        }
+        else
+        {
+            result.ToString().Should().Be(expected?.ToString());
+            result.Type.Should().Be(attribute.Type);
+        }
+
+        if (!matchCase && value != null)
+        {
+            var resultSimple = attribute.Replace(find, replace);
+            resultSimple.ToString().Should().Be(expected?.ToString());
+        }
+    }
+
+    #endregion
 }

@@ -143,9 +143,10 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
         return (_value, obj) switch
         {
             _ when ReferenceEquals(this, obj) => 0,
+            (_, AttributeValue other) => CompareTo(other._value),
+            (null, null) => 0,
             (_, null) => 1,
             (null, _) => -1,
-            (_, AttributeValue other) => CompareTo(other._value),
             (IComparable left, IComparable right) => CompareValues(left, right),
             _ => throw new ArgumentException($"Object must be comparable. Type: {obj.GetType().Name}", nameof(obj))
         };
@@ -196,9 +197,9 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
         return obj switch
         {
             not null when ReferenceEquals(obj, this) => true,
+            AttributeValue other => Equals(other._value),
             not null when _value is null => false,
             null => _value is null,
-            AttributeValue other => Equals(other._value),
             _ => AreEqual(_value, obj)
         };
 
@@ -370,7 +371,10 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
         if (_value is null)
             return false;
 
-        var regexPattern = "^" + Regex.Escape(pattern).Replace("%", ".*").Replace("?", ".") + "$";
+        var regexPattern = "^" + Regex.Escape(pattern)
+            .Replace("\\?", ".")
+            .Replace("%", ".*") + "$";
+
         return Regex.IsMatch(ToString(), regexPattern);
     }
 
