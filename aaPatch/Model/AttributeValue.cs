@@ -1,12 +1,13 @@
 ﻿using System.Globalization;
 using System.Linq.Dynamic.Core.CustomTypeProviders;
+using System.Text.RegularExpressions;
 
 namespace aaPatch.Model;
 
 /// <summary>
 /// Represents an immutable wrapper for a value, allowing for comparison and operations
 /// with various data types. This class is designed to encapsulate and unify different
-/// primitive and object types into a single model.
+/// primitive and object types into a single model to be used with Dynamic LINQ expressions.
 /// </summary>
 [DynamicLinqType]
 public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
@@ -51,6 +52,44 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     public AttributeValue As(Type type) => new(Convert.ChangeType(_value, type));
 
     /// <summary>
+    /// Determines whether the current instance contains the specified text.
+    /// </summary>
+    /// <param name="text">The text to search for within the current instance.
+    /// The comparison is case-insensitive by default.</param>
+    /// <returns>True if the specified text is found; otherwise, false.</returns>
+    public bool Contains(string text) => ContainsText(text, false);
+
+    /// <summary>
+    /// Determines whether the encapsulated value contains the specified text,
+    /// with an option to consider case sensitivity.
+    /// </summary>
+    /// <param name="text">The text to search for within the encapsulated value.</param>
+    /// <param name="matchCase">A boolean value indicating whether the comparison
+    /// should be case-sensitive. If true, the comparison is case-sensitive;
+    /// otherwise, the comparison is case-insensitive.</param>
+    /// <returns>Returns true if the encapsulated value contains the specified text;
+    /// otherwise, false. If the encapsulated value is null, the method returns false.</returns>
+    public bool Contains(string text, bool matchCase) => ContainsText(text, matchCase);
+
+    /// <summary>
+    /// Determines if the string representation of the current value matches the specified
+    /// SQL-style 'LIKE' pattern. The pattern may include '%' as a wildcard for zero or more
+    /// characters and '?' as a wildcard for a single character.
+    /// </summary>
+    /// <param name="pattern">The SQL-style pattern to compare against the value.
+    /// The pattern supports '%' as a multi-character wildcard and '?' as a single-character wildcard.</param>
+    /// <returns>Returns <c>true</c> if the string representation of the current value matches
+    /// the specified pattern; otherwise, <c>false</c>.</returns>
+    public bool Like(string pattern) => LikePattern(pattern);
+
+    /// <summary>
+    /// Determines whether the encapsulated value matches the specified regular expression pattern.
+    /// </summary>
+    /// <param name="pattern">The regular expression pattern to match against the current value.</param>
+    /// <returns><c>true</c> if the encapsulated value matches the specified pattern; otherwise, <c>false</c>.</returns>
+    public bool Matches(string pattern) => MatchesPattern(pattern);
+
+    /// <summary>
     /// Replaces all occurrences of the specified substring in the current value with a new string
     /// and returns a new <see cref="AttributeValue"/> instance containing the replaced value.
     /// </summary>
@@ -58,7 +97,7 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     /// <param name="replace">The string to replace all occurrences of <paramref name="find"/>.</param>
     /// <returns>A new <see cref="AttributeValue"/> instance containing the value after replacing
     /// occurrences of <paramref name="find"/> with <paramref name="replace"/>.</returns>
-    public AttributeValue Replace(string find, string replace) => Replace(find, replace, false);
+    public AttributeValue Replace(string find, string replace) => new(ReplaceText(find, replace, false));
 
     /// <summary>
     /// Replaces all occurrences of a specified string in the current <see cref="AttributeValue"/>
@@ -69,18 +108,7 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     /// <param name="replace">The string to replace all occurrences of <paramref name="find"/>.</param>
     /// <param name="match">If true, performs case-sensitive matching; if false, performs case-insensitive matching.</param>
     /// <returns>A new <see cref="AttributeValue"/> with the result of the replacement operation.</returns>
-    public AttributeValue Replace(string find, string replace, bool match)
-    {
-        if (_value is null)
-            return this;
-
-        var comparison = match ? StringComparison.InvariantCulture : StringComparison.InvariantCultureIgnoreCase;
-
-        var text = ToString();
-        var result = text.Replace(find, replace, comparison);
-        var typed = Convert.ChangeType(result, _value.GetType());
-        return new AttributeValue(typed);
-    }
+    public AttributeValue Replace(string find, string replace, bool match) => new(ReplaceText(find, replace, match));
 
     /// <summary>
     /// Returns a string representation of the value wrapped by the <see cref="AttributeValue"/> class.
@@ -129,7 +157,7 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
                 return left.CompareTo(right);
 
             // To support string-typed numeric data, try and convert to match the supplied type.
-            // This is specifically useful since typically CSV/AVEVA attribute values are strings.
+            // This is useful since typically CSV/AVEVA attribute values are strings.
             if (left is string text && (IsNumeric(right) || right is bool))
             {
                 var converted = Convert.ChangeType(
@@ -328,5 +356,67 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
             or int or uint
             or long or ulong
             or float or double or decimal;
+    }
+
+    /// <summary>
+    /// Determines whether the current value matches the specified pattern.
+    /// The pattern supports wildcard characters '%' (matches zero or more characters)
+    /// and '?' (matches a single character).
+    /// </summary>
+    /// <param name="pattern">The pattern to match against. Supports SQL-style wildcards.</param>
+    /// <returns>True if the current value matches the specified pattern; otherwise, false.</returns>
+    private bool LikePattern(string pattern)
+    {
+        if (_value is null)
+            return false;
+
+        var regexPattern = "^" + Regex.Escape(pattern).Replace("%", ".*").Replace("?", ".") + "$";
+        return Regex.IsMatch(ToString(), regexPattern);
+    }
+
+    /// <summary>
+    /// Determines whether the current value matches the specified regular expression pattern.
+    /// </summary>
+    /// <param name="pattern">The regular expression pattern to match against the string representation of the value.</param>
+    /// <returns>True if the value matches the specified pattern; otherwise, false.</returns>
+    private bool MatchesPattern(string pattern)
+    {
+        if (_value is null)
+            return false;
+
+        return Regex.IsMatch(ToString(), pattern);
+    }
+
+    /// <summary>
+    /// Determines whether the value contains the specified text, optionally considering case sensitivity.
+    /// </summary>
+    /// <param name="text">The text to search for within the value.</param>
+    /// <param name="matchCase">A flag indicating whether the search should be case-sensitive. If true, the search is case-sensitive; otherwise, it is case-insensitive.</param>
+    /// <returns>True if the value contains the specified text; otherwise, false.</returns>
+    private bool ContainsText(string text, bool matchCase)
+    {
+        if (_value is null)
+            return false;
+
+        var comparison = matchCase ? StringComparison.InvariantCulture : StringComparison.InvariantCultureIgnoreCase;
+        return ToString().Contains(text, comparison);
+    }
+
+    /// <summary>
+    /// Replaces occurrences of a specified substring within the current value with another substring,
+    /// optionally using case sensitivity.
+    /// </summary>
+    /// <param name="find">The substring to locate within the current value.</param>
+    /// <param name="replace">The substring to replace the located substring with.</param>
+    /// <param name="matchCase">A boolean value indicating whether the search should be case-sensitive.</param>
+    /// <returns>A modified object where the specified substring is replaced, preserving the original type.</returns>
+    private object ReplaceText(string find, string replace, bool matchCase)
+    {
+        if (_value is null)
+            return this;
+
+        var comparison = matchCase ? StringComparison.InvariantCulture : StringComparison.InvariantCultureIgnoreCase;
+        var result = ToString().Replace(find, replace, comparison);
+        return Convert.ChangeType(result, _value.GetType());
     }
 }

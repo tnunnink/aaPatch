@@ -7,14 +7,15 @@ namespace aaPatch.Tests.Model;
 public class AttributeDataTests
 {
     [Test]
-    public void Constructor_InvalidHeader_ThrowsArgumentException()
+    public void Constructor_InvalidName_ThrowsArgumentException()
     {
-        var act = () => _ = new AttributeData("", "value");
-        act.Should().Throw<ArgumentException>();
+        var constructor = () => _ = new AttributeData("", "value");
+        
+        constructor.Should().Throw<ArgumentException>();
     }
 
     [Test]
-    public void Constructor_SimpleString_ParsesCorrectly()
+    public void Constructor_ValidName_HasExpectedValues()
     {
         var attribute = new AttributeData("Description", "Pump");
 
@@ -24,12 +25,19 @@ public class AttributeDataTests
 
 
     [Test]
-    public void Constructor_MxDouble_ParsesCorrectly()
+    [TestCase(0)]
+    [TestCase(123)]
+    [TestCase(-123)]
+    [TestCase(9876532346)]
+    [TestCase(55.5)]
+    [TestCase(0.000111)]
+    [TestCase(true)]
+    [TestCase("this is a test")]
+    public void Constructor_DifferentTypedValues_HaxExpectedValue(object value)
     {
-        var attribute = new AttributeData("Level", 55.5);
+        var attribute = new AttributeData("MyValue", value);
 
-        attribute.Name.Should().Be("Level");
-        attribute.Value.Should().Be(55.5);
+        attribute.Value.Should().Be(value);
     }
 
     [Test]

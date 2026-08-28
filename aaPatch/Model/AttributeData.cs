@@ -1,13 +1,12 @@
 ﻿namespace aaPatch.Model;
 
 /// <summary>
-/// Represents attribute data consisting of a header, a type, a name, and an associated value.
+/// Represents attribute data consisting of a name and an associated typed value.
 /// </summary>
 /// <remarks>
-/// The <see cref="AttributeData"/> class is designed to parse attribute-related information
-/// from a given header string and maintain an optional value associated with the attribute.
-/// The header is expected to follow a specific format for accurate parsing of the name
-/// and type.
+/// The <see cref="AttributeData"/> class stores attribute information with a name identifier
+/// and a value wrapped in an <see cref="AttributeValue"/> for type safety. The class provides
+/// immutable operations for renaming, duplicating, and updating values while preserving type information.
 /// </remarks>
 public class AttributeData
 {
@@ -19,31 +18,28 @@ public class AttributeData
     /// <exception cref="ArgumentException">Thrown when the name parameter is null or empty.</exception>
     public AttributeData(string name, object? value)
     {
-        if (string.IsNullOrEmpty(name))
-            throw new ArgumentException("Name cannot be null or empty.", nameof(name));
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Name cannot be null, empty, or whitespace.", nameof(name));
 
         Name = name;
         Value = new AttributeValue(value);
     }
 
     /// <summary>
-    /// Gets the name derived from the header field.
+    /// Gets the name of the attribute.
     /// </summary>
     /// <remarks>
-    /// The name is extracted from the header string by isolating the portion
-    /// preceding the first occurrence of a type definition enclosed in parentheses.
-    /// If no such portion exists, the full header string is returned as the name.
+    /// The name serves as a unique identifier for the attribute and cannot be null or whitespace.
     /// </remarks>
     public string Name { get; }
 
     /// <summary>
-    /// Retrieves the parsed value associated with the attribute data.
+    /// Gets the typed value associated with the attribute data.
     /// </summary>
     /// <remarks>
-    /// The value is derived by interpreting the raw input string based on the
-    /// type specified in the header. If the raw value is null, the result will
-    /// also be null. The type of the returned object can vary and depends on
-    /// the type specified in the header (e.g., string, int, bool, etc.).
+    /// The value is wrapped in an <see cref="AttributeValue"/> which preserves type information
+    /// and provides type conversion capabilities. The underlying value can be of various types
+    /// (e.g., string, int, double, bool, float) or null.
     /// </remarks>
     public AttributeValue Value { get; }
 
@@ -59,16 +55,16 @@ public class AttributeData
     /// Creates a duplicate of the current <see cref="AttributeData"/> instance.
     /// </summary>
     /// <returns>
-    /// A new <see cref="AttributeData"/> instance with the same header and value as the current instance.
+    /// A new <see cref="AttributeData"/> instance with the same name and a deep copy of the value.
     /// </returns>
     public AttributeData Duplicate() => new(Name, new AttributeValue(Value));
 
     /// <summary>
-    /// Creates a new instance of the <see cref="AttributeData"/> class with the specified name and an updated value.
-    /// The value is converted to the same type as the current value, if applicable.
+    /// Creates a new instance of the <see cref="AttributeData"/> class with the same name and an updated value.
+    /// The new value is converted to match the type of the current value using <see cref="AttributeValue.As"/>.
     /// </summary>
     /// <param name="value">The new value to update. Can be null or a value convertible to the type of the current value.</param>
-    /// <returns>A new instance of the <see cref="AttributeData"/> class with the updated value.</returns>
+    /// <returns>A new instance of the <see cref="AttributeData"/> class with the updated value converted to the original type.</returns>
     /// <exception cref="InvalidCastException">Thrown if the value cannot be converted to the type of the current value.</exception>
     public AttributeData Update(AttributeValue value) => new(Name, value.As(Value.Type));
 
