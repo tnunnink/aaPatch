@@ -55,4 +55,37 @@ public class ObjectExpressionTests
 
         selector(value).Should().Be("Pump 103");
     }
+
+    [Test]
+    [TestCase("{Age} == 25", true)]
+    [TestCase("{Age} != 25", false)]
+    [TestCase("{Name} == \"John\"", true)]
+    [TestCase("{Name} != \"John\"", false)]
+    [TestCase("{Age} > 20", true)]
+    [TestCase("{Age} < 30", true)]
+    [TestCase("{Age} >= 25", true)]
+    [TestCase("{Age} <= 25", true)]
+    [TestCase("{IsActive} == true", true)]
+    [TestCase("{IsActive} == false", false)]
+    [TestCase("{Nullable} == null", true)]
+    [TestCase("{Nullable} != null", false)]
+    [TestCase("{Age} == 25 && {Name} == \"John\"", true)]
+    [TestCase("{Age} == 25 && {Name} == \"Doe\"", false)]
+    [TestCase("{Age} == 25 || {Name} == \"Doe\"", true)]
+    [TestCase("!{IsActive}", false)]
+    [TestCase("({Age} > 20 && {Age} < 30) || {Name} == \"Doe\"", true)]
+    public void Compile_ComplexExpressions_ShouldEvaluateCorrectly(string expr, bool expected)
+    {
+        var data = new ObjectData([
+            new AttributeData("Age", 25),
+            new AttributeData("Name", "John"),
+            new AttributeData("IsActive", true),
+            new AttributeData("Nullable", null)
+        ]);
+        var expression = new ObjectExpression(expr);
+
+        var predicate = expression.Compile<ObjectData, bool>();
+
+        predicate(data).Should().Be(expected);
+    }
 }

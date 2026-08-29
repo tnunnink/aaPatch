@@ -1,5 +1,6 @@
 ﻿using aaPatch.Formats;
 using aaPatch.Model;
+using FluentAssertions;
 
 namespace aaPatch.Tests.Formatters;
 
@@ -35,22 +36,14 @@ public class AvevaFormatterTests
 
         var result = formatter.Read(SimpleGalaxyDump).ToList();
 
-        var p101 = result.First(x => x.Match("P_101"));
+        var p101 = result.First(x => x["TagName"] == "P_101");
+        p101["Template"].Should().Be("$Pump");
+        p101["Description"].Should().Be("Centrifugal Pump");
+        p101["HiHi"].Should().Be("100.0");
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(p101["Template"], Is.EqualTo("$Pump"));
-            Assert.That(p101["Description"], Is.EqualTo("Centrifugal Pump"));
-            Assert.That(p101["HiHi"], Is.EqualTo("100.0"));
-        }
-
-        var v201 = result.First(x => x.Match("V_201"));
-
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(v201["Template"], Is.EqualTo("$Valve"));
-            Assert.That(v201["OpenLimit"], Is.EqualTo("True"));
-        }
+        var v201 = result.First(x => x["TagName"] == "V_201");
+        v201["Template"].Should().Be("$Valve");
+        v201["OpenLimit"].Should().Be("True");
     }
 
     [Test]
@@ -100,14 +93,10 @@ public class AvevaFormatterTests
             """;
 
         var result = formatter.Read(dump).ToList()[0];
-
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(result["HiHi(MxFloat)"], Is.EqualTo(100.5f));
-            Assert.That(result["OpenLimit(MxBoolean)"], Is.True);
-            Assert.That(result["Count(MxInteger)"], Is.EqualTo(10));
-            Assert.That(result["Level(MxDouble)"], Is.EqualTo(55.55));
-        }
+        result["HiHi(MxFloat)"].Should().Be(100.5f);
+        result["OpenLimit(MxBoolean)"].Should().Be(true);
+        result["Count(MxInteger)"].Should().Be(10);
+        result["Level(MxDouble)"].Should().Be(55.55);
     }
 
     [Test]

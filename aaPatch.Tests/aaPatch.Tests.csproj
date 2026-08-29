@@ -43,7 +43,6 @@
         <None Update="Formatters\AvevaFormatterTests.Write_WithTypedValues_MatchesVerified.verified.txt">
           <DependentUpon>AvevaFormatterTests.cs</DependentUpon>
         </None>
-        <None Remove="Formatters\**" />
         <None Update="Commands\PatchCommandTests.ExecuteAsync_InvalidSelection_OutputContainsNullField.verified.txt">
           <DependentUpon>PatchCommandTests.cs</DependentUpon>
         </None>
@@ -53,12 +52,35 @@
       <Folder Include="Files\" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Compile Remove="Formatters\**" />
-    </ItemGroup>
 
     <ItemGroup>
-      <EmbeddedResource Remove="Formatters\**" />
+      <Content Include="Formatters\AvevaFormatterTests.Write_ValidObjects_MatchesVerified.verified.txt">
+        <DependentUpon>AvevaFormatterTests.cs</DependentUpon>
+      </Content>
+      <Content Include="Formatters\AvevaFormatterTests.Write_WithTypedValues_MatchesVerified.verified.txt">
+        <DependentUpon>AvevaFormatterTests.cs</DependentUpon>
+      </Content>
+      <Content Include="Formatters\ConversionTests.AvevaToCsv_RoundTrip_AvevaToCsv.verified.txt">
+        <DependentUpon>ConversionTests.cs</DependentUpon>
+      </Content>
+      <Content Include="Formatters\ConversionTests.AvevaToJson_RoundTrip_AvevaToJson.verified.txt">
+        <DependentUpon>ConversionTests.cs</DependentUpon>
+      </Content>
+      <Content Include="Formatters\ConversionTests.CsvToAveva_RoundTrip_CsvToAveva.verified.txt">
+        <DependentUpon>ConversionTests.cs</DependentUpon>
+      </Content>
+      <Content Include="Formatters\ConversionTests.CsvToJson_RoundTrip_CsvToJson.verified.txt">
+        <DependentUpon>ConversionTests.cs</DependentUpon>
+      </Content>
+      <Content Include="Formatters\ConversionTests.JsonToAveva_RoundTrip_JsonToAveva.verified.txt">
+        <DependentUpon>ConversionTests.cs</DependentUpon>
+      </Content>
+      <Content Include="Formatters\CsvFormatterTests.Write_ValidObjects_MatchesVerified.verified.txt">
+        <DependentUpon>CsvFormatterTests.cs</DependentUpon>
+      </Content>
+      <Content Include="Formatters\JsonFormatterTests.Write_ValidObjects_MatchesVerified.verified.txt">
+        <DependentUpon>JsonFormatterTests.cs</DependentUpon>
+      </Content>
     </ItemGroup>
 
 </Project>

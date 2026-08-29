@@ -1,5 +1,6 @@
 using aaPatch.Formats;
 using aaPatch.Model;
+using FluentAssertions;
 
 namespace aaPatch.Tests.Formatters;
 
@@ -32,13 +33,9 @@ public class JsonFormatterTests
 
         var result = formatter.Read(SimpleJson).ToList();
 
-
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(result, Has.Count.EqualTo(2));
-            Assert.That(result[0]["TagName"], Is.EqualTo("P_101"));
-            Assert.That(result[0]["Description"], Is.EqualTo("Centrifugal Pump"));
-        }
+        result.Should().HaveCount(2);
+        result[0]["TagName"].Should().Be("P_101");
+        result[0]["Description"].Should().Be("Centrifugal Pump");
     }
 
     [Test]
@@ -67,15 +64,15 @@ public class JsonFormatterTests
     {
         var formatter = new JsonFormatter();
 
-        Assert.Throws<ArgumentException>(() => formatter.Read("not json"));
-        Assert.Throws<ArgumentException>(() => formatter.Read("{ \"not\": \"an array\" }"));
+        formatter.Invoking(f => f.Read("not json")).Should().Throw<ArgumentException>();
+        formatter.Invoking(f => f.Read("{ \"not\": \"an array\" }")).Should().Throw<ArgumentException>();
     }
 
     [Test]
     public void Read_EmptyString_ThrowsArgumentException()
     {
         var formatter = new JsonFormatter();
-        Assert.Throws<ArgumentException>(() => formatter.Read(""));
+        formatter.Invoking(f => f.Read("")).Should().Throw<ArgumentException>();
     }
 
     [Test]
@@ -96,21 +93,16 @@ public class JsonFormatterTests
             ]
             """;
 
-        var result = formatter.Read(json).ToList();
-        var obj = result[0];
+        var result = formatter.Read(json).ToList()[0];
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(obj["Int"], Is.EqualTo(10));
-            Assert.That(obj["Int"], Is.TypeOf<int>());
-            Assert.That(obj["Long"], Is.EqualTo(999999999999L));
-            Assert.That(obj["Long"], Is.TypeOf<long>());
-            Assert.That(obj["Double"], Is.EqualTo(10.5));
-            Assert.That(obj["Double"], Is.TypeOf<double>());
-            Assert.That(obj["Bool"], Is.True);
-            Assert.That(obj["Null"], Is.Null);
-            Assert.That(obj["String"], Is.EqualTo("hello"));
-        }
+        result["Int"].Should().Be(10);
+        result["Int"]?.Type.Should().Be(typeof(int));
+        result["Long"].Should().Be(999999999999L);
+        result["Long"]?.Type.Should().Be(typeof(long));
+        result["Double"].Should().Be(10.5);
+        result["Double"]?.Type.Should().Be(typeof(double));
+        result["Bool"].Should().Be(true);
+        result["String"].Should().Be("hello");
     }
 
     [Test]
@@ -130,11 +122,8 @@ public class JsonFormatterTests
 
         var result = formatter.Read(json).ToList()[0];
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(result["Nested"]?.ToString(), Does.Contain("\"Key\": \"Value\""));
-            Assert.That(result["Array"]?.ToString(), Does.Match(@"\[\s*1,\s*2,\s*3\s*\]"));
-        }
+        result["Nested"]?.ToString().Should().Contain("\"Key\": \"Value\"");
+        result["Array"]?.ToString().Should().MatchRegex(@"\[\s*1,\s*2,\s*3\s*\]");
     }
 
     [Test]
@@ -151,13 +140,10 @@ public class JsonFormatterTests
 
         var result = formatter.Read(json).ToList();
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(result[0]["A"], Is.EqualTo(1));
-            Assert.That(result[0]["B"], Is.Null);
+        result[0]["A"].Should().Be(1);
+        result[0]["B"].Should().BeNull();
 
-            Assert.That(result[1]["A"], Is.Null);
-            Assert.That(result[1]["B"], Is.EqualTo(2));
-        }
+        result[1]["A"].Should().BeNull();
+        result[1]["B"].Should().Be(2);
     }
 }

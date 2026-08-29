@@ -1,5 +1,6 @@
 using aaPatch.Formats;
 using aaPatch.Model;
+using FluentAssertions;
 
 namespace aaPatch.Tests.Formatters;
 
@@ -20,21 +21,15 @@ public class CsvFormatterTests
 
         var result = formatter.Read(StandardCsv).ToList();
 
-        Assert.That(result, Has.Count.EqualTo(2));
+        result.Should().HaveCount(2);
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(result[0]["TagName"], Is.EqualTo("P_101"));
-            Assert.That(result[0]["Description"], Is.EqualTo("Centrifugal Pump"));
-            Assert.That(result[0]["Value"], Is.EqualTo("100.0"));
-        }
+        result[0]["TagName"].Should().Be("P_101");
+        result[0]["Description"].Should().Be("Centrifugal Pump");
+        result[0]["Value"].Should().Be("100.0");
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(result[1]["TagName"], Is.EqualTo("V_201"));
-            Assert.That(result[1]["Description"], Is.EqualTo("Gate Valve"));
-            Assert.That(result[1]["Value"], Is.EqualTo("true"));
-        }
+        result[1]["TagName"].Should().Be("V_201");
+        result[1]["Description"].Should().Be("Gate Valve");
+        result[1]["Value"].Should().Be("true");
     }
 
     [Test]
@@ -71,7 +66,7 @@ public class CsvFormatterTests
         // Let's see what happens with just headers.
         var result = formatter.Read("TagName,Description").ToList();
 
-        Assert.That(result, Is.Empty);
+        result.Should().BeEmpty();
     }
 
     [Test]
@@ -79,6 +74,6 @@ public class CsvFormatterTests
     {
         var formatter = new CsvFormatter();
 
-        Assert.Throws<InvalidOperationException>(() => formatter.Write([]));
+        formatter.Invoking(f => f.Write([])).Should().Throw<InvalidOperationException>();
     }
 }

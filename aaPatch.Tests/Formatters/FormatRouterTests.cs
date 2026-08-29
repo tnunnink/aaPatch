@@ -1,4 +1,5 @@
 using aaPatch.Formats;
+using FluentAssertions;
 
 namespace aaPatch.Tests.Formatters;
 
@@ -13,8 +14,8 @@ public class FormatRouterTests
 
         var result = router.Read(json).ToList();
 
-        Assert.That(result, Has.Count.EqualTo(1));
-        Assert.That(result[0]["TagName"], Is.EqualTo("T1"));
+        result.Should().HaveCount(1);
+        result[0]["TagName"].Should().Be("T1");
     }
 
     [Test]
@@ -25,8 +26,8 @@ public class FormatRouterTests
 
         var result = router.Read(aveva).ToList();
 
-        Assert.That(result, Has.Count.EqualTo(1));
-        Assert.That(result[0]["TagName"], Is.EqualTo("T1"));
+        result.Should().HaveCount(1);
+        result[0]["TagName"].Should().Be("T1");
     }
 
     [Test]
@@ -37,8 +38,8 @@ public class FormatRouterTests
 
         var result = router.Read(csv).ToList();
 
-        Assert.That(result, Has.Count.EqualTo(1));
-        Assert.That(result[0]["TagName"], Is.EqualTo("T1"));
+        result.Should().HaveCount(1);
+        result[0]["TagName"].Should().Be("T1");
     }
 
     [Test]
@@ -50,6 +51,6 @@ public class FormatRouterTests
 
         var result = router.Read(input).ToList();
 
-        Assert.That(result[0]["TagName"], Is.EqualTo(expectedTagName));
+        result[0]["TagName"].Should().Be(expectedTagName);
     }
 }
