@@ -28,8 +28,8 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Patches = ["{Description} := Updated Pump"],
-            Filter = "{template} = $Pump"
+            Patches = ["{Description} := \"Updated Pump\""],
+            Filter = "{Template} = \"$Pump\""
         };
 
         await command.ExecuteAsync(console);
@@ -45,7 +45,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Patches = ["Description:Pump=Motor"]
+            Patches = ["{Description} := it.Replace(\"Pump\",\"Motor\")"]
         };
 
         await command.ExecuteAsync(console);
@@ -62,8 +62,8 @@ public class PatchCommandTests
         var command = new PatchCommand
         {
             InputFile = inputFile,
-            Patches = ["Description=File Updated"],
-            Filter = "Template=$Pump"
+            Patches = ["{Description} := \"File Updated\""],
+            Filter = "{Template} = \"$Pump\""
         };
 
         await command.ExecuteAsync(console);
@@ -83,7 +83,7 @@ public class PatchCommandTests
             var command = new PatchCommand
             {
                 OutputFile = outputFile,
-                Patches = ["Description=Output to File"]
+                Patches = ["{Description} := \"Output to File\""]
             };
 
             await command.ExecuteAsync(console);
@@ -110,7 +110,7 @@ public class PatchCommandTests
             {
                 InputFile = inputFile,
                 OutputFile = outputFile,
-                Patches = ["Description=Both Files Specified"]
+                Patches = ["{Description} := \"Both Files Specified\""]
             };
 
             await command.ExecuteAsync(console);
@@ -131,7 +131,7 @@ public class PatchCommandTests
         var command = new PatchCommand
         {
             InputFile = "non_existent_file.csv",
-            Patches = ["Description=Updated"]
+            Patches = ["{Description} := \"Updated\""]
         };
 
         var ex = Assert.ThrowsAsync<CommandException>(async () => await command.ExecuteAsync(console));
@@ -150,7 +150,7 @@ public class PatchCommandTests
             var command = new PatchCommand
             {
                 InputFile = inputFile,
-                Patches = ["Description=Updated"]
+                Patches = ["{Description} := \"Updated\""]
             };
 
             var ex = Assert.ThrowsAsync<CommandException>(async () => await command.ExecuteAsync(console));
@@ -173,7 +173,7 @@ public class PatchCommandTests
         var command = new PatchCommand
         {
             OutputFile = outputFile,
-            Patches = ["Description=Updated"]
+            Patches = ["{Description} := \"Updated\""]
         };
 
         var ex = Assert.ThrowsAsync<CommandException>(async () => await command.ExecuteAsync(console));
@@ -188,8 +188,8 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filter = "{Description}.Like(Centrifugal*)",
-            Patches = ["HiHi=200.0"]
+            Filter = "{Description}.Like(\"Centrifugal%\")",
+            Patches = ["{HiHi} := 200.0"]
         };
 
         await command.ExecuteAsync(console);
@@ -208,7 +208,7 @@ public class PatchCommandTests
         var command = new PatchCommand
         {
             InputFile = inputFile,
-            Patches = ["ShortDesc=This is a patched file"]
+            Patches = ["{ShortDesc} := \"This is a patched file\""]
         };
 
         await command.ExecuteAsync(console);
@@ -224,7 +224,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Patches = ["Description:PUMP=Motor"]
+            Patches = ["{Description} := it.Replace(\"PUMP\", \"Motor\")"]
         };
 
         await command.ExecuteAsync(console);
@@ -241,8 +241,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Patches = ["Description:PUMP=Motor"],
-            MatchCase = true
+            Patches = ["{Description} := it.Replace(\"PUMP\", \"Motor\", true)"]
         };
 
         await command.ExecuteAsync(console);
@@ -259,8 +258,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Patches = ["Description:Pump=Motor"],
-            MatchCase = true
+            Patches = ["{Description} := it.Replace(\"Pump\", \"Motor\", true)"]
         };
 
         await command.ExecuteAsync(console);
@@ -277,7 +275,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filter = "Template=$Pump"
+            Filter = "{Template} = \"$Pump\""
         };
 
         await command.ExecuteAsync(console);
@@ -297,7 +295,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filter = "P_101"
+            Filter = "{TagName} = \"P_101\""
         };
 
         await command.ExecuteAsync(console);
@@ -316,7 +314,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filter = "NonExistent"
+            Filter = "{TagName} = \"NonExistent\""
         };
 
         await command.ExecuteAsync(console);
@@ -352,13 +350,13 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Selections = ["Template", "TagName", "Description=ShortDesc"]
+            Selections = ["Template", "TagName", "Comment:={Description}"]
         };
 
         await command.ExecuteAsync(console);
 
         var output = console.ReadOutputString();
-        Assert.That(output, Does.Contain(":Tagname,ShortDesc"));
+        Assert.That(output, Does.Contain(":Tagname,Comment"));
         Assert.That(output, Does.Not.Contain(",Description"));
     }
 
@@ -380,21 +378,20 @@ public class PatchCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_InvalidSelection_OutputIsEmpty()
+    public async Task ExecuteAsync_InvalidSelection_OutputContainsNullField()
     {
         using var console = new FakeInMemoryConsole();
         console.WriteInput(SimpleGalaxyDump);
 
         var command = new PatchCommand
         {
-            Selections = ["NonExistent"],
-            Format = Format.Json
+            Selections = ["Template", "TagName", "NonExistent"]
         };
 
         await command.ExecuteAsync(console);
 
         var output = console.ReadOutputString();
-        await VerifyJson(output);
+        await Verify(output);
     }
 
     [Test]
@@ -422,7 +419,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Filter = "Template=$Pump",
+            Filter = "{Template}=\"$Pump\"",
             Selections = ["Template", "TagName", "HiHi"]
         };
 
@@ -489,7 +486,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Selections = ["NewField=123"]
+            Selections = ["NewField := 123"]
         };
 
         await command.ExecuteAsync(console);
@@ -508,7 +505,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Selections = ["NewField=123"]
+            Selections = ["*", "NewField := 123"]
         };
 
         await command.ExecuteAsync(console);
@@ -524,7 +521,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Selections = ["NewField=123"],
+            Selections = ["*", "NewField := 123"],
             Format = Format.Json
         };
 

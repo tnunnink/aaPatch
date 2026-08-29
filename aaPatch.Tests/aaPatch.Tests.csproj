@@ -44,6 +44,9 @@
           <DependentUpon>AvevaFormatterTests.cs</DependentUpon>
         </None>
         <None Remove="Formatters\**" />
+        <None Update="Commands\PatchCommandTests.ExecuteAsync_InvalidSelection_OutputContainsNullField.verified.txt">
+          <DependentUpon>PatchCommandTests.cs</DependentUpon>
+        </None>
     </ItemGroup>
 
     <ItemGroup>

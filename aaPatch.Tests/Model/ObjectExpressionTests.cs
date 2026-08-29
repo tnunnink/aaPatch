@@ -24,16 +24,14 @@ public class ObjectExpressionTests
     }
 
     [Test]
-    public void Compile_ExpressionWithReference_ShouldHaveExpectedResultString()
+    public void Compile_FilterExpressionWithReference_ShouldProduceExpectedResult()
     {
         List<ObjectData> data = [new([new AttributeData("Test", 11)])];
         var expression = new ObjectExpression("{Test} > 10");
 
         var predicate = expression.Compile<ObjectData, bool>();
 
-        var result = data.Where(predicate).ToList();
-
-        result.Should().HaveCount(1);
+        data.Where(predicate).Should().HaveCount(1);
     }
 
     [Test]
@@ -44,8 +42,7 @@ public class ObjectExpressionTests
 
         var selector = expression.Compile<AttributeValue, object?>();
 
-        var result = selector(value);
-        result.Should().Be("This is a static value test");
+        selector(value).Should().Be("This is a static value test");
     }
 
     [Test]
@@ -56,7 +53,6 @@ public class ObjectExpressionTests
 
         var selector = expression.Compile<AttributeValue, object?>();
 
-        var result = selector(value);
-        result.Should().Be("Pump 103");
+        selector(value).Should().Be("Pump 103");
     }
 }

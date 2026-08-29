@@ -1,3 +1,4 @@
 ﻿:TEMPLATE=$Pump
 :Tagname,Description,HiHi
 P_101,File Updated,100.0
+P_102,File Updated,80.0

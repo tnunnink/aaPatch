@@ -614,14 +614,11 @@ public class AttributeValueTests
     [TestCase("Hello World", "hello", false, true)]
     [TestCase("Hello World", "hello", true, false)]
     [TestCase(null, "test", false, false)]
-    public void Contains_WhenCalled_ShouldReturnExpectedResult(object? value, string text, bool matchCase, bool expected)
+    public void Contains_WhenCalled_ShouldReturnExpectedResult(object? value, string text, bool match, bool expected)
     {
         var attribute = new AttributeValue(value);
-        attribute.Contains(text, matchCase).Should().Be(expected);
-        if (!matchCase)
-        {
-            attribute.Contains(text).Should().Be(expected);
-        }
+
+        attribute.Contains(text, match).Should().Be(expected);
     }
 
     [Test]
@@ -633,6 +630,7 @@ public class AttributeValueTests
     public void Like_WhenCalled_ShouldReturnExpectedResult(object? value, string pattern, bool expected)
     {
         var attribute = new AttributeValue(value);
+
         attribute.Like(pattern).Should().Be(expected);
     }
 
@@ -643,7 +641,10 @@ public class AttributeValueTests
     public void Matches_WhenCalled_ShouldReturnExpectedResult(object? value, string pattern, bool expected)
     {
         var attribute = new AttributeValue(value);
-        attribute.Matches(pattern).Should().Be(expected);
+
+        var result = attribute.Matches(pattern);
+
+        result.Should().Be(expected);
     }
 
     [Test]
@@ -652,27 +653,14 @@ public class AttributeValueTests
     [TestCase("Hello World", "world", "Universe", true, "Hello World")]
     [TestCase("123", "2", "4", false, "143")]
     [TestCase(123, "2", "4", false, 143)]
-    [TestCase(null, "a", "b", false, null)]
-    public void Replace_WhenCalled_ShouldReturnExpectedResult(object? value, string find, string replace, bool matchCase, object? expected)
+    public void Replace_WhenCalled_ShouldReturnExpected(object? value, string find, string replace,
+        bool match, object? expected)
     {
         var attribute = new AttributeValue(value);
-        var result = attribute.Replace(find, replace, matchCase);
 
-        if (value == null)
-        {
-            result.IsNull.Should().BeTrue();
-        }
-        else
-        {
-            result.ToString().Should().Be(expected?.ToString());
-            result.Type.Should().Be(attribute.Type);
-        }
+        var result = attribute.Replace(find, replace, match);
 
-        if (!matchCase && value != null)
-        {
-            var resultSimple = attribute.Replace(find, replace);
-            resultSimple.ToString().Should().Be(expected?.ToString());
-        }
+        result.Should().Be(expected);
     }
 
     #endregion

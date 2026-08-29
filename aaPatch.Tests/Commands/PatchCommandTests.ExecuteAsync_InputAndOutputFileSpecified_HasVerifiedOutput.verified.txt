@@ -1,6 +1,7 @@
 ﻿:TEMPLATE=$Pump
 :Tagname,Description,HiHi
 P_101,Both Files Specified,100.0
+P_102,Both Files Specified,80.0
 
 :TEMPLATE=$Valve
 :Tagname,Description,OpenLimit
