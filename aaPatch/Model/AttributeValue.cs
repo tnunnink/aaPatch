@@ -13,6 +13,13 @@ namespace aaPatch.Model;
 public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
 {
     /// <summary>
+    /// Provides a standardized culture setting for operations within the <see cref="AttributeValue"/> class.
+    /// This culture setting is based on <see cref="CultureInfo.InvariantCulture"/> to ensure consistent
+    /// formatting and parsing behaviors, particularly for numeric and string conversions.
+    /// </summary>
+    private static CultureInfo Culture => CultureInfo.InvariantCulture;
+
+    /// <summary>
     /// Holds the underlying value encapsulated by the <see cref="AttributeValue"/> class.
     /// This value can represent various data types, including primitives and objects.
     /// It is immutable and serves as the core data stored in an <see cref="AttributeValue"/> instance.
@@ -274,6 +281,71 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     public static bool operator !=(AttributeValue? left, AttributeValue? right) => !Equals(left, right);
 
     /// <summary>
+    /// Defines a set of operators and implicit conversions for the <see cref="AttributeValue"/> class.
+    /// </summary>
+    /// <remarks>
+    /// This class provides custom operator overloads to facilitate natural operations between
+    /// <see cref="AttributeValue"/> instances. These include arithmetic operations, comparison
+    /// operators, logical operators, and implicit conversions to and from common .NET types.
+    /// </remarks>
+    public static bool operator true(AttributeValue attribute) => attribute._value is true;
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="attribute"></param>
+    /// <returns></returns>
+    public static bool operator false(AttributeValue attribute) => attribute._value is false;
+
+    /// <summary>
+    /// Performs logical negation on an <see cref="AttributeValue"/> instance.
+    /// </summary>
+    /// <param name="value">The <see cref="AttributeValue"/> instance to negate.</param>
+    /// <returns><c>true</c> if the underlying value is a boolean <c>false</c> or null; otherwise, <c>false</c>.</returns>
+    public static bool operator !(AttributeValue value) => value._value switch
+    {
+        bool b => !b,
+        null => true,
+        _ => false
+    };
+
+    /// <summary>
+    /// Adds two <see cref="AttributeValue"/> instances together.
+    /// </summary>
+    /// <param name="left">The left operand.</param>
+    /// <param name="right">The right operand.</param>
+    /// <returns>A new <see cref="AttributeValue"/> containing the result of the addition.</returns>
+    public static AttributeValue operator +(AttributeValue left, AttributeValue right) =>
+        ApplyNumeric(left, right, (l, r) => l + r);
+
+    /// <summary>
+    /// Subtracts one <see cref="AttributeValue"/> instance from another.
+    /// </summary>
+    /// <param name="left">The left operand.</param>
+    /// <param name="right">The right operand.</param>
+    /// <returns>A new <see cref="AttributeValue"/> containing the result of the subtraction.</returns>
+    public static AttributeValue operator -(AttributeValue left, AttributeValue right) =>
+        ApplyNumeric(left, right, (l, r) => l - r);
+
+    /// <summary>
+    /// Multiplies two <see cref="AttributeValue"/> instances.
+    /// </summary>
+    /// <param name="left">The left operand.</param>
+    /// <param name="right">The right operand.</param>
+    /// <returns>A new <see cref="AttributeValue"/> containing the result of the multiplication.</returns>
+    public static AttributeValue operator *(AttributeValue left, AttributeValue right) =>
+        ApplyNumeric(left, right, (l, r) => l * r);
+
+    /// <summary>
+    /// Divides one <see cref="AttributeValue"/> instance by another.
+    /// </summary>
+    /// <param name="left">The left operand.</param>
+    /// <param name="right">The right operand.</param>
+    /// <returns>A new <see cref="AttributeValue"/> containing the result of the division.</returns>
+    public static AttributeValue operator /(AttributeValue left, AttributeValue right) =>
+        ApplyNumeric(left, right, (l, r) => l / r);
+
+    /// <summary>
     /// Determines whether one <see cref="AttributeValue"/> instance is less than another.
     /// </summary>
     /// <param name="left">The first <see cref="AttributeValue"/> instance to compare. Can be null.</param>
@@ -352,6 +424,57 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     public static implicit operator AttributeValue(string value) => new(value);
 
     /// <summary>
+    /// Implicitly converts an <see cref="AttributeValue"/> instance to a boolean value.
+    /// </summary>
+    /// <param name="value">The <see cref="AttributeValue"/> instance to convert.</param>
+    /// <returns>
+    /// <c>true</c> if the underlying value is a boolean <c>true</c>; otherwise, <c>false</c>.
+    /// </returns>
+    public static implicit operator bool(AttributeValue value) => value._value is true;
+
+    /// <summary>
+    /// Implicitly converts an <see cref="AttributeValue"/> instance to a 32-bit signed integer.
+    /// </summary>
+    /// <param name="value">The <see cref="AttributeValue"/> instance to convert.</param>
+    /// <returns>A 32-bit signed integer representation of the underlying value.</returns>
+    public static implicit operator int(AttributeValue value) => Convert.ToInt32(value._value, Culture);
+
+    /// <summary>
+    /// Implicitly converts an <see cref="AttributeValue"/> instance to a 64-bit signed integer.
+    /// </summary>
+    /// <param name="value">The <see cref="AttributeValue"/> instance to convert.</param>
+    /// <returns>A 64-bit signed integer representation of the underlying value.</returns>
+    public static implicit operator long(AttributeValue value) => Convert.ToInt64(value._value, Culture);
+
+    /// <summary>
+    /// Implicitly converts an <see cref="AttributeValue"/> instance to a single-precision floating-point number.
+    /// </summary>
+    /// <param name="value">The <see cref="AttributeValue"/> instance to convert.</param>
+    /// <returns>A single-precision floating-point number representation of the underlying value.</returns>
+    public static implicit operator float(AttributeValue value) => Convert.ToSingle(value._value, Culture);
+
+    /// <summary>
+    /// Implicitly converts an <see cref="AttributeValue"/> instance to a double-precision floating-point number.
+    /// </summary>
+    /// <param name="value">The <see cref="AttributeValue"/> instance to convert.</param>
+    /// <returns>A double-precision floating-point number representation of the underlying value.</returns>
+    public static implicit operator double(AttributeValue value) => Convert.ToDouble(value._value, Culture);
+
+    /// <summary>
+    /// Implicitly converts an <see cref="AttributeValue"/> instance to a decimal number.
+    /// </summary>
+    /// <param name="value">The <see cref="AttributeValue"/> instance to convert.</param>
+    /// <returns>A decimal number representation of the underlying value.</returns>
+    public static implicit operator decimal(AttributeValue value) => Convert.ToDecimal(value._value, Culture);
+
+    /// <summary>
+    /// Implicitly converts an <see cref="AttributeValue"/> instance to a string.
+    /// </summary>
+    /// <param name="value">The <see cref="AttributeValue"/> instance to convert.</param>
+    /// <returns>A string representation of the underlying value.</returns>
+    public static implicit operator string(AttributeValue value) => value.ToString();
+
+    /// <summary>
     /// Determines whether the specified value is of a numeric type.
     /// </summary>
     /// <param name="value">The value to check. Can be of any type.</param>
@@ -366,6 +489,31 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
             or int or uint
             or long or ulong
             or float or double or decimal;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="left"></param>
+    /// <param name="right"></param>
+    /// <param name="operation"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    private static AttributeValue ApplyNumeric(AttributeValue left, AttributeValue right,
+        Func<decimal, decimal, decimal> operation)
+    {
+        if (left._value is null || right._value is null)
+            return new AttributeValue(null);
+
+        if (IsNumeric(left._value) && IsNumeric(right._value))
+        {
+            var leftNum = Convert.ToDecimal(left._value, CultureInfo.InvariantCulture);
+            var rightNum = Convert.ToDecimal(right._value, CultureInfo.InvariantCulture);
+            return new AttributeValue(operation(leftNum, rightNum));
+        }
+
+        throw new InvalidOperationException(
+            $"Cannot perform arithmetic on types {left.Type.Name} and {right.Type.Name}");
     }
 
     /// <summary>
