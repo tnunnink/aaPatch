@@ -60,13 +60,6 @@ public partial class PatchCommand : ICommand
     public IReadOnlyList<string> Attributes { get; set; } = [];
 
     /// <summary>
-    /// Gets or sets a value indicating whether to perform case-sensitive matching for find-replace operations.
-    /// Default is false (case-insensitive).
-    /// </summary>
-    [CommandOption("match", 'm', Description = "Perform case-sensitive matching for find-replace operations.")]
-    public bool MatchCase { get; set; }
-
-    /// <summary>
     /// Gets or sets the output format for the patched Galaxy CSV export.
     /// Supported options are "aveva" for AVEVA format and "json" for JSON format.
     /// Defaults to "aveva" if not specified.
@@ -95,7 +88,7 @@ public partial class PatchCommand : ICommand
             var data = objects
                 .Filter(Filter)
                 .Having(Attributes)
-                .Patch(Patches) //todo add match case
+                .Patch(Patches)
                 .Project(Selections)
                 .ToList();
 

@@ -30,17 +30,26 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     }
 
     /// <summary>
+    /// Gets the type of the underlying value encapsulated by the <see cref="AttributeValue"/> instance.
+    /// This property returns the runtime type of the value stored within, or null if no value is set.
+    /// It enables type inspection for the encapsulated data consistently.
+    /// </summary>
+    public Type Type => _value?.GetType() ?? typeof(object);
+
+    /// <summary>
     /// Indicates whether the encapsulated value within the <see cref="AttributeValue"/> instance is null.
     /// Returns true if the underlying value is null, otherwise false.
     /// </summary>
     public bool IsNull => _value is null;
 
     /// <summary>
-    /// Gets the type of the underlying value encapsulated by the <see cref="AttributeValue"/> instance.
-    /// This property returns the runtime type of the value stored within, or null if no value is set.
-    /// It enables type inspection for the encapsulated data consistently.
+    /// Retrieves the encapsulated value of the current <see cref="AttributeValue"/> instance.
     /// </summary>
-    public Type Type => _value?.GetType() ?? typeof(object);
+    /// <returns>
+    /// The underlying value stored in the <see cref="AttributeValue"/> instance,
+    /// or null if no value is present.
+    /// </returns>
+    public object? GetValue() => _value;
 
     /// <summary>
     /// Converts the wrapped value of the current <see cref="AttributeValue"/> instance to the specified type

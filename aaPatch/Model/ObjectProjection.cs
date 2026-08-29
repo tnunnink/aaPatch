@@ -19,7 +19,7 @@ public sealed record ObjectProjection
     private readonly ObjectExpression _expression;
 
     /// <summary>
-    /// 
+    /// Caches the compiled expression to optimize repeated evaluations of object data projections.
     /// </summary>
     private Func<ObjectData, object?>? _cached;
 
@@ -36,9 +36,8 @@ public sealed record ObjectProjection
             throw new ArgumentException("Selection expression cannot be null, empty, or whitespace.", nameof(input));
 
         var index = input.IndexOf(":=", StringComparison.Ordinal);
-
         _name = index > 0 ? input[..index].Trim() : input.Trim();
-        _expression = index > 0 ? input[(index + 1)..].Trim() : $"{{{input.Trim()}}}";
+        _expression = index > 0 ? input[(index + 2)..].Trim() : $"{{{input.Trim()}}}";
     }
 
     /// <summary>

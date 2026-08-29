@@ -57,7 +57,7 @@ public class JsonFormatter : IObjectFormater
     {
         var dictionary = data.Select(x => x.ToDictionary(
             a => a.Name,
-            a => a.Value,
+            a => a.Value.GetValue(),
             StringComparer.OrdinalIgnoreCase)
         ).ToArray();
 

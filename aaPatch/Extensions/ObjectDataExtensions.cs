@@ -70,11 +70,18 @@ public static class ObjectExtensions
         /// </returns>
         public IEnumerable<ObjectData> Patch(IReadOnlyCollection<ObjectPatch> patches)
         {
+            if (patches.Count == 0)
+                return data;
+
+            var results = new List<ObjectData>();
+
             foreach (var item in data)
             {
-                var results = item.Select(x => patches.Aggregate(x, (a, p) => p.Apply(a)));
-                yield return new ObjectData(results);
+                var attributes = item.Select(x => patches.Aggregate(x, (a, p) => p.Apply(a)));
+                results.Add(new ObjectData(attributes));
             }
+
+            return results;
         }
 
         /// <summary>
@@ -91,11 +98,18 @@ public static class ObjectExtensions
         /// </returns>
         public IEnumerable<ObjectData> Project(IReadOnlyCollection<ObjectProjection> projections)
         {
+            if (projections.Count == 0)
+                return data;
+
+            var results = new List<ObjectData>();
+
             foreach (var item in data)
             {
                 var attributes = projections.SelectMany(p => p.Project(item));
-                yield return new ObjectData(attributes);
+                results.Add(new ObjectData(attributes));
             }
+
+            return results;
         }
     }
 }

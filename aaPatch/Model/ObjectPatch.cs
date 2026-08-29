@@ -23,7 +23,7 @@ public sealed record ObjectPatch
     /// Stores a compiled delegate representing the logic for modifying an attribute's value based on
     /// the patch expression. If null, the patch expression has not been compiled yet.
     /// </summary>
-    private Func<AttributeValue, object?>? _patch;
+    private Func<AttributeValue, object?>? _cached;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ObjectPatch"/> class by parsing a patch expression string.
@@ -36,26 +36,17 @@ public sealed record ObjectPatch
         if (string.IsNullOrWhiteSpace(input))
             throw new ArgumentException("Patch expression cannot be null, empty, or whitespace.", nameof(input));
 
-        var assignmentIndex = input.IndexOf(":=", StringComparison.Ordinal);
+        var index = input.IndexOf(":=", StringComparison.Ordinal);
+        var target = index > 0 ? input[..index].Trim() : null;
+        var expression = index > 0 ? input[(index + 2)..].Trim() : input.Trim();
 
-        if (assignmentIndex < 0)
-        {
-            _target = null;
-            _expression = new ObjectExpression(input.Trim());
-            return;
-        }
-
-        var target = input[..assignmentIndex].Trim();
-        var expression = input[(assignmentIndex + 2)..].Trim();
-
-        if (!target.StartsWith('{') || !target.EndsWith('}'))
-            throw new ArgumentException(
-                "A targeted patch must use '{Attribute} := Expression'.");
+        if (target is not null && (!target.StartsWith('{') || !target.EndsWith('}')))
+            throw new ArgumentException("A targeted patch must use '{Attribute} := Expression'.");
 
         if (expression.Length == 0)
             throw new ArgumentException("Patch expression cannot be empty.");
 
-        _target = target[1..^1].Trim();
+        _target = target?[1..^1]?.Trim();
         _expression = new ObjectExpression(expression);
     }
 
@@ -69,7 +60,7 @@ public sealed record ObjectPatch
     /// of the original attribute if no update is performed.</returns>
     public AttributeData Apply(AttributeData attribute)
     {
-        var patch = _patch ??= _expression.Compile<AttributeValue, object?>();
+        var patch = _cached ??= _expression.Compile<AttributeValue, object?>();
 
         // Only update if the target is not specified (global patch)
         // or if the target is specified and matches the provided attribute name.
