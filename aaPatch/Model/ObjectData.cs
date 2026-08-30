@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Linq.Dynamic.Core.CustomTypeProviders;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace aaPatch.Model;
 
@@ -33,18 +35,52 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     }
 
     /// <summary>
+    /// A unique identifier that represents the specific instance of the exported object data.
+    /// This property generates a new globally unique identifier (GUID) to ensure object-level
+    /// uniqueness, which can be useful for distinguishing records in a system or tracking.
+    /// </summary>
+    public Guid RecordId { get; } = Guid.NewGuid();
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public string SchemaId => field ??= GetSchemaHash();
+
+    /// <summary>
+    /// Computes a unique hash for the schema based on the current set of attribute headers.
+    /// This hash is generated using the SHA-256 algorithm applied to a comma-separated,
+    /// case-insensitive list of attribute names and returned as a Base64-encoded string.
+    /// </summary>
+    /// <returns>
+    /// A Base64-encoded string representing the SHA-256 hash of the schema's attribute headers.
+    /// </returns>
+    private string GetSchemaHash()
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+
+        foreach (var name in _attributes.Keys)
+        {
+            var normalized = Encoding.UTF8.GetBytes(name.ToUpperInvariant());
+            hash.AppendData(BitConverter.GetBytes(normalized.Length));
+            hash.AppendData(normalized);
+        }
+
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    /// <summary>
     /// Gets the total number of attributes associated with the object.
     /// </summary>
     public int Count => _attributes.Count;
 
     /// <summary>
-    /// Provides an indexer for accessing object data attributes by name. The indexer allows retrieval of the
-    /// value associated with a specific attribute, including special cases for "Template" and "TagName".
+    /// Retrieves the value of an attribute by its name in the context of the current object.
+    /// This indexer provides access to a specific attribute's value based on the provided attribute name.
     /// </summary>
-    /// <param name="name">The name of the attribute to retrieve. Use "Template" or "TagName" to access their corresponding values,
-    /// or the name of a specific object attribute.</param>
-    /// <returns>The value of the requested attribute if it exists, or null if the attribute is not defined.</returns>
-    public AttributeValue? this[string name] => TryResolveAttribute(name, out var attribute) ? attribute.Value : null;
+    /// <param name="name">The name of the attribute to retrieve.</param>
+    /// <returns>The value of the attribute as an <see cref="AttributeValue"/> object.</returns>
+    /// <exception cref="ArgumentException">Thrown when multiple attributes match the specified name.</exception>
+    public AttributeValue this[string name] => ResolveAttribute(name);
 
     /// <summary>
     /// Checks if the object contains all specified attributes.
@@ -117,5 +153,32 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
                 attribute = null!;
                 return false;
         }
+    }
+
+    /// <summary>
+    /// Resolves the value of an attribute by its name. If an exact match is not found, attempts to find an attribute
+    /// whose name starts with the specified text. Throws an exception if multiple matches are found.
+    /// </summary>
+    /// <param name="name">The name of the attribute to resolve. This can be either the full attribute name or the prefix.</param>
+    /// <returns>The resolved <see cref="AttributeValue"/>. Returns <see cref="AttributeValue.Null"/> if no match is found.</returns>
+    /// <exception cref="ArgumentException">Thrown when multiple attributes match the specified name.</exception>
+    private AttributeValue ResolveAttribute(string name)
+    {
+        // Explicit match to the attribute name wins first
+        if (_attributes.TryGetValue(name, out var matched))
+            return matched.Value;
+
+        // Otherwise, help the user and try to find the name starting with the provided text.
+        // This is designed to help with accessing AVEVA columns that have type metadata (e.g., MyColumn(MxInteger))
+        var prefix = $"{name}(";
+        var matches = _attributes.Keys.Where(k => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        return matches.Count switch
+        {
+            > 1 => throw new ArgumentException(
+                $"Ambiguous attribute name '{name}'. Multiple attributes match: {string.Join(", ", matches)}. Please specify the full attribute name including type suffix."),
+            1 => _attributes[matches[0]].Value,
+            _ => AttributeValue.Null
+        };
     }
 }

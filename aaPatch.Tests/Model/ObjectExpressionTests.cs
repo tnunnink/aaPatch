@@ -76,16 +76,32 @@ public class ObjectExpressionTests
     [TestCase("({Age} > 20 && {Age} < 30) || {Name} == \"Doe\"", true)]
     public void Compile_ComplexExpressions_ShouldEvaluateCorrectly(string expr, bool expected)
     {
+        var expression = new ObjectExpression(expr);
         var data = new ObjectData([
             new AttributeData("Age", 25),
             new AttributeData("Name", "John"),
             new AttributeData("IsActive", true),
             new AttributeData("Nullable", null)
         ]);
-        var expression = new ObjectExpression(expr);
 
         var predicate = expression.Compile<ObjectData, bool>();
 
         predicate(data).Should().Be(expected);
+    }
+
+    [Test]
+    public void Compile_NonExistingAttributeReference_ShouldFilterObject()
+    {
+        List<ObjectData> data =
+        [
+            new([new AttributeData("Value", 123)]),
+            new([new AttributeData("Desc", "This will be filtered")]),
+            new([new AttributeData("Value", 456)]),
+            new([new AttributeData("Value", 33)])
+        ];
+
+        var predicate = new ObjectExpression("{Value} > 100").Compile<ObjectData, bool>();
+
+        data.Where(predicate).Should().HaveCount(2);
     }
 }

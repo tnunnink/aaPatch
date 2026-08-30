@@ -44,10 +44,10 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     public Type Type => _value?.GetType() ?? typeof(object);
 
     /// <summary>
-    /// Indicates whether the encapsulated value within the <see cref="AttributeValue"/> instance is null.
-    /// Returns true if the underlying value is null, otherwise false.
+    /// Represents a predefined, immutable instance of <see cref="AttributeValue"/> with a value of <c>null</c>.
+    /// This property can be used to explicitly signify a null or unset state within the <see cref="AttributeValue"/> context.
     /// </summary>
-    public bool IsNull => _value is null;
+    public static AttributeValue Null { get; } = new(null);
 
     /// <summary>
     /// Retrieves the encapsulated value of the current <see cref="AttributeValue"/> instance.

@@ -22,28 +22,16 @@ public class AttributeValueTests
         var original = new AttributeValue(42);
         var wrapped = new AttributeValue(original);
 
-        wrapped.Type.Should().Be(typeof(int));
+        wrapped.Type.Should().Be<int>();
         wrapped.ToString().Should().Be("42");
     }
 
     [Test]
-    public void IsNull_NullValue_ShouldBeTrue()
+    public void Null_NullValue_ShouldBeTrue()
     {
-        var attribute = new AttributeValue(null!);
+        var attribute = AttributeValue.Null;
 
-        var result = attribute.IsNull;
-
-        result.Should().BeTrue();
-    }
-
-    [Test]
-    public void IsNull_NonNullValue_ShouldBeFalse()
-    {
-        var attribute = new AttributeValue(123);
-
-        var result = attribute.IsNull;
-
-        result.Should().BeFalse();
+        attribute.GetValue().Should().Be(null);
     }
 
     [Test]
@@ -57,7 +45,7 @@ public class AttributeValueTests
     [TestCase(999999999999, typeof(long))]
     [TestCase(123.456, typeof(double))]
     [TestCase("This is a test value", typeof(string))]
-    public void ValueType_WhenCalled_ShouldBeExpectedValue(object value, Type expected)
+    public void Type_WhenCalled_ShouldBeExpectedValue(object value, Type expected)
     {
         var attribute = new AttributeValue(value);
 
@@ -105,7 +93,7 @@ public class AttributeValueTests
         var value = new AttributeValue("123");
         var converted = value.As(typeof(int));
 
-        converted.Type.Should().Be(typeof(int));
+        converted.Type.Should().Be<int>();
         converted.ToString().Should().Be("123");
     }
 
@@ -119,12 +107,12 @@ public class AttributeValueTests
         AttributeValue d = 1.5;
         AttributeValue str = "test";
 
-        b.Type.Should().Be(typeof(bool));
-        s.Type.Should().Be(typeof(short));
-        i.Type.Should().Be(typeof(int));
-        l.Type.Should().Be(typeof(long));
-        d.Type.Should().Be(typeof(double));
-        str.Type.Should().Be(typeof(string));
+        b.Type.Should().Be<bool>();
+        s.Type.Should().Be<short>();
+        i.Type.Should().Be<int>();
+        l.Type.Should().Be<long>();
+        d.Type.Should().Be<double>();
+        str.Type.Should().Be<string>();
     }
 
     #endregion
