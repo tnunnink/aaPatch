@@ -120,4 +120,19 @@ public class AvevaFormatterTests
 
         await Verify(result);
     }
+
+    [Test]
+    public void Read_EmptyFields_RemainEmptyString()
+    {
+        var formatter = new AvevaFormatter();
+        const string dump =
+            """
+            :TEMPLATE=$Pump
+            :Tagname,Description
+            P_101,
+            """;
+
+        var result = formatter.Read(dump).ToList()[0];
+        result["Description"].Should().Be("");
+    }
 }

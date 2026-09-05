@@ -188,9 +188,9 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
             // If we have different numeric types, promote both to a common numeric that can preserve both values.
             if (IsNumeric(left) && IsNumeric(right))
             {
-                var leftNumber = Convert.ToDecimal(left, CultureInfo.InvariantCulture);
-                var rightNumber = Convert.ToDecimal(right, CultureInfo.InvariantCulture);
-                return leftNumber.CompareTo(rightNumber);
+                var x = Convert.ToDecimal(left, CultureInfo.InvariantCulture);
+                var y = Convert.ToDecimal(right, CultureInfo.InvariantCulture);
+                return x.CompareTo(y);
             }
 
             throw new InvalidOperationException(
@@ -270,7 +270,7 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     /// <param name="left">The first <see cref="AttributeValue"/> instance to compare. Can be null.</param>
     /// <param name="right">The second <see cref="AttributeValue"/> instance to compare. Can be null.</param>
     /// <returns><c>true</c> if the two instances are equal; otherwise, <c>false</c>.</returns>
-    public static bool operator ==(AttributeValue? left, AttributeValue? right) => Equals(left, right);
+    public static bool operator ==(AttributeValue? left, AttributeValue? right) => Equals(left ?? Null, right ?? Null);
 
     /// <summary>
     /// Determines whether two <see cref="AttributeValue"/> instances are not equal.
@@ -278,23 +278,22 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     /// <param name="left">The first <see cref="AttributeValue"/> instance to compare. Can be null.</param>
     /// <param name="right">The second <see cref="AttributeValue"/> instance to compare. Can be null.</param>
     /// <returns><c>true</c> if the two instances are not equal; otherwise, <c>false</c>.</returns>
-    public static bool operator !=(AttributeValue? left, AttributeValue? right) => !Equals(left, right);
+    public static bool operator !=(AttributeValue? left, AttributeValue? right) => !Equals(left ?? Null, right ?? Null);
 
     /// <summary>
-    /// Defines a set of operators and implicit conversions for the <see cref="AttributeValue"/> class.
+    /// Determines whether an <see cref="AttributeValue"/> instance evaluates to true in a boolean context.
+    /// This operator enables the use of <see cref="AttributeValue"/> in conditional expressions and short-circuit evaluation.
     /// </summary>
-    /// <remarks>
-    /// This class provides custom operator overloads to facilitate natural operations between
-    /// <see cref="AttributeValue"/> instances. These include arithmetic operations, comparison
-    /// operators, logical operators, and implicit conversions to and from common .NET types.
-    /// </remarks>
+    /// <param name="attribute">The <see cref="AttributeValue"/> instance to evaluate.</param>
+    /// <returns><c>true</c> if the underlying value is a boolean <c>true</c>; otherwise, <c>false</c>.</returns>
     public static bool operator true(AttributeValue attribute) => attribute._value is true;
 
     /// <summary>
-    /// 
+    /// Determines whether an <see cref="AttributeValue"/> instance evaluates to false in a boolean context.
+    /// This operator enables the use of <see cref="AttributeValue"/> in conditional expressions and short-circuit evaluation.
     /// </summary>
-    /// <param name="attribute"></param>
-    /// <returns></returns>
+    /// <param name="attribute">The <see cref="AttributeValue"/> instance to evaluate.</param>
+    /// <returns><c>true</c> if the underlying value is a boolean <c>false</c>; otherwise, <c>false</c>.</returns>
     public static bool operator false(AttributeValue attribute) => attribute._value is false;
 
     /// <summary>
@@ -352,7 +351,7 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     /// <param name="right">The second <see cref="AttributeValue"/> instance to compare. Can be null.</param>
     /// <returns><c>true</c> if the left instance is less than the right instance; otherwise, <c>false</c>.</returns>
     public static bool operator <(AttributeValue? left, AttributeValue? right) =>
-        left is null ? right is not null : left.CompareTo(right) < 0;
+        Comparable(left, right) && left!.CompareTo(right) < 0;
 
     /// <summary>
     /// Determines whether one <see cref="AttributeValue"/> instance is greater than another.
@@ -361,7 +360,7 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     /// <param name="right">The second <see cref="AttributeValue"/> instance to compare. Can be null.</param>
     /// <returns><c>true</c> if the left instance is greater than the right instance; otherwise, <c>false</c>.</returns>
     public static bool operator >(AttributeValue? left, AttributeValue? right) =>
-        left is not null && left.CompareTo(right) > 0;
+        Comparable(left, right) && left!.CompareTo(right) > 0;
 
     /// <summary>
     /// Determines whether one <see cref="AttributeValue"/> instance is less than or equal to another.
@@ -370,7 +369,7 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     /// <param name="right">The second <see cref="AttributeValue"/> instance to compare. Can be null.</param>
     /// <returns><c>true</c> if the left instance is less than or equal to the right instance; otherwise, <c>false</c>.</returns>
     public static bool operator <=(AttributeValue? left, AttributeValue? right) =>
-        left is null || left.CompareTo(right) <= 0;
+        Comparable(left, right) && left!.CompareTo(right) <= 0;
 
     /// <summary>
     /// Determines whether one <see cref="AttributeValue"/> instance is greater than or equal to another.
@@ -379,7 +378,7 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     /// <param name="right">The second <see cref="AttributeValue"/> instance to compare. Can be null.</param>
     /// <returns><c>true</c> if the left instance is greater than or equal to the right instance; otherwise, <c>false</c>.</returns>
     public static bool operator >=(AttributeValue? left, AttributeValue? right) =>
-        left is null ? right is null : left.CompareTo(right) >= 0;
+        Comparable(left, right) && left!.CompareTo(right) >= 0;
 
     /// <summary>
     /// Implicitly converts a boolean value to an <see cref="AttributeValue"/> instance.
@@ -475,6 +474,19 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     public static implicit operator string(AttributeValue value) => value.ToString();
 
     /// <summary>
+    /// Determines whether two <see cref="AttributeValue"/> instances can be compared.
+    /// Both instances must have non-null underlying values to be considered comparable.
+    /// </summary>
+    /// <param name="left">The first <see cref="AttributeValue"/> instance to check. Can be null.</param>
+    /// <param name="right">The second <see cref="AttributeValue"/> instance to check. Can be null.</param>
+    /// <returns>
+    /// <c>true</c> if both <see cref="AttributeValue"/> instances have non-null underlying values;
+    /// otherwise, <c>false</c>.
+    /// </returns>
+    private static bool Comparable(AttributeValue? left, AttributeValue? right) =>
+        left?._value is not null && right?._value is not null;
+
+    /// <summary>
     /// Determines whether the specified value is of a numeric type.
     /// </summary>
     /// <param name="value">The value to check. Can be of any type.</param>
@@ -492,13 +504,14 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     }
 
     /// <summary>
-    /// 
+    /// Applies a numeric operation to two <see cref="AttributeValue"/> instances
+    /// and returns the resulting <see cref="AttributeValue"/>.
     /// </summary>
-    /// <param name="left"></param>
-    /// <param name="right"></param>
-    /// <param name="operation"></param>
-    /// <returns></returns>
-    /// <exception cref="InvalidOperationException"></exception>
+    /// <param name="left">The left-hand operand of the operation. Must contain a numeric value.</param>
+    /// <param name="right">The right-hand operand of the operation. Must contain a numeric value.</param>
+    /// <param name="operation">A function representing the arithmetic operation to apply to the numeric values.</param>
+    /// <returns>A new <see cref="AttributeValue"/> containing the result of the applied operation, or null if either operand is null.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when either operand does not contain a numeric value, making the operation invalid.</exception>
     private static AttributeValue ApplyNumeric(AttributeValue left, AttributeValue right,
         Func<decimal, decimal, decimal> operation)
     {
@@ -507,9 +520,9 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
 
         if (IsNumeric(left._value) && IsNumeric(right._value))
         {
-            var leftNum = Convert.ToDecimal(left._value, CultureInfo.InvariantCulture);
-            var rightNum = Convert.ToDecimal(right._value, CultureInfo.InvariantCulture);
-            return new AttributeValue(operation(leftNum, rightNum));
+            var x = Convert.ToDecimal(left._value, CultureInfo.InvariantCulture);
+            var y = Convert.ToDecimal(right._value, CultureInfo.InvariantCulture);
+            return new AttributeValue(operation(x, y));
         }
 
         throw new InvalidOperationException(

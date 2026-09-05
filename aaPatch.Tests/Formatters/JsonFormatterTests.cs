@@ -141,9 +141,9 @@ public class JsonFormatterTests
         var result = formatter.Read(json).ToList();
 
         result[0]["A"].Should().Be(1);
-        result[0]["B"].Should().BeNull();
+        result[0]["B"].Should().Be(AttributeValue.Null);
 
-        result[1]["A"].Should().BeNull();
+        result[1]["A"].Should().Be(AttributeValue.Null);
         result[1]["B"].Should().Be(2);
     }
 }

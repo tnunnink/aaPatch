@@ -74,6 +74,7 @@ public partial class ObjectExpression
 
         try
         {
+            Console.WriteLine(lambda.Body.ToString());
             return lambda.Compile();
         }
         catch (Exception exception)

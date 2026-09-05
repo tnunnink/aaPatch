@@ -652,4 +652,76 @@ public class AttributeValueTests
     }
 
     #endregion
+
+    #region Null Semantics
+
+    [Test]
+    public void Null_Equality_ShouldBeTrue()
+    {
+        var attribute = AttributeValue.Null;
+
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        (attribute == null).Should().BeTrue();
+        (null == attribute).Should().BeTrue();
+        (attribute == AttributeValue.Null).Should().BeTrue();
+        attribute?.Equals(null).Should().BeTrue();
+        attribute?.Equals(AttributeValue.Null).Should().BeTrue();
+    }
+
+    [Test]
+    public void Null_Inequality_ShouldBeFalse()
+    {
+        var attribute = AttributeValue.Null;
+        
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        (attribute != null).Should().BeFalse();
+        (null != attribute).Should().BeFalse();
+        (attribute != AttributeValue.Null).Should().BeFalse();
+    }
+
+    [Test]
+    [TestCase(5)]
+    [TestCase(5.0)]
+    [TestCase("test")]
+    [TestCase(true)]
+    public void Null_Comparisons_ShouldAllBeFalse(object value)
+    {
+        var attribute = AttributeValue.Null;
+        var other = new AttributeValue(value);
+
+        (attribute > other).Should().BeFalse("Null > value should be false");
+        (attribute < other).Should().BeFalse("Null < value should be false");
+        (attribute >= other).Should().BeFalse("Null >= value should be false");
+        (attribute <= other).Should().BeFalse("Null <= value should be false");
+
+        (other > attribute).Should().BeFalse("value > Null should be false");
+        (other < attribute).Should().BeFalse("value < Null should be false");
+        (other >= attribute).Should().BeFalse("value >= Null should be false");
+        (other <= attribute).Should().BeFalse("value <= Null should be false");
+    }
+
+    [Test]
+    public void Null_StringMethods_ShouldBeFalse()
+    {
+        var nullValue = AttributeValue.Null;
+
+        nullValue.Contains("test").Should().BeFalse();
+        nullValue.Like("%").Should().BeFalse();
+        nullValue.Matches(".*").Should().BeFalse();
+    }
+
+    [Test]
+    public void Null_Arithmetic_ShouldReturnNull()
+    {
+        var nullValue = AttributeValue.Null;
+        var five = new AttributeValue(5);
+
+        (nullValue + five).Should().Be(AttributeValue.Null);
+        (five + nullValue).Should().Be(AttributeValue.Null);
+        (nullValue - five).Should().Be(AttributeValue.Null);
+        (nullValue * five).Should().Be(AttributeValue.Null);
+        (nullValue / five).Should().Be(AttributeValue.Null);
+    }
+
+    #endregion
 }

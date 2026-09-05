@@ -81,7 +81,7 @@ public class ObjectExpressionTests
             new AttributeData("Age", 25),
             new AttributeData("Name", "John"),
             new AttributeData("IsActive", true),
-            new AttributeData("Nullable", null)
+            new AttributeData("Nullable", AttributeValue.Null)
         ]);
 
         var predicate = expression.Compile<ObjectData, bool>();
@@ -103,5 +103,15 @@ public class ObjectExpressionTests
         var predicate = new ObjectExpression("{Value} > 100").Compile<ObjectData, bool>();
 
         data.Where(predicate).Should().HaveCount(2);
+    }
+
+    [Test]
+    public void Compile_MissingAttributeInExpression_ShouldBeFalseInsteadOfCrash()
+    {
+        var data = new ObjectData([new AttributeData("Present", 100)]);
+        var expr = new ObjectExpression("{Missing} > 10");
+        var predicate = expr.Compile<ObjectData, bool>();
+
+        predicate(data).Should().BeFalse();
     }
 }

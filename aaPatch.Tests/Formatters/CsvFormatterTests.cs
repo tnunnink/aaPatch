@@ -76,4 +76,14 @@ public class CsvFormatterTests
 
         formatter.Invoking(f => f.Write([])).Should().Throw<InvalidOperationException>();
     }
+
+    [Test]
+    public void Read_EmptyFields_RemainEmptyString()
+    {
+        var formatter = new CsvFormatter();
+        const string csv = "TagName,Description\nP_101,";
+
+        var result = formatter.Read(csv).ToList()[0];
+        result["Description"].Should().Be("");
+    }
 }

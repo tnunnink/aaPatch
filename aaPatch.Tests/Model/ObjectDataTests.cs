@@ -34,7 +34,7 @@ public class ObjectDataTests
 
         var value = data["NonExistent"];
 
-        value.Should().BeNull();
+        value.Should().Be(AttributeValue.Null);
     }
 
     [Test]

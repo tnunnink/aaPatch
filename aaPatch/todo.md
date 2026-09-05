@@ -489,22 +489,18 @@ Add focused tests following the existing test organization and naming convention
 
 ## What is actually left to examine (as of 8.29.26)
 
-Heterogeneous CSV schemas
-Output uses the first object’s headers and writes later objects by enumeration order. Different schemas or ordering can misalign columns.
-Heterogeneous AVEVA objects within one template
-The same first-object/header versus per-object value-order issue exists here.
-AVEVA identity validation
-Confirm missing or null Template/TagName produces a clear error rather than malformed output.
---has ambiguity semantics
-It currently appears to use normal resolution, which throws on ambiguous logical names. Decide whether that is desired or whether “any match means present” is better.
-Expression failure handling and security
-Parsing occurs outside the wrapped compilation error handling, and the Dynamic LINQ exposure deserves an explicit allow-list/security review.
-Culture consistency
-AVEVA parsing and Convert.ChangeType should consistently use invariant culture.
-Edge-case tests Focus on:
-Reordered/missing/extra columns
-Missing AVEVA identities
-Ambiguous logical names
-Invalid expressions
-Null updates/conversions
-Empty formatter output
+- **Heterogeneous CSV schemas** Output uses the first object’s headers and writes later objects by enumeration order. Different schemas or ordering can misalign columns.
+- **Heterogeneous AVEVA objects within one template**. The same first-object/header versus per-object value-order issue exists here.
+- **AVEVA identity validation** Confirm missing or null Template/TagName produces a clear error rather than malformed output.
+--has ambiguity semantics It currently appears to use normal resolution, which throws on ambiguous logical names. Decide whether that is desired or whether “any match means present” is better.
+- **Expression failure handling and security.** Parsing occurs outside the wrapped compilation error handling, and the Dynamic LINQ exposure deserves an explicit allow-list/security review.
+- **Culture consistency** AVEVA parsing and Convert.ChangeType should consistently use invariant culture.
+
+### Edge-case tests Focus on:
+
+- Reordered/missing/extra columns
+- Missing AVEVA identities
+- Ambiguous logical names
+- Invalid expressions
+- Null updates/conversions
+- Empty formatter output
