@@ -135,4 +135,61 @@ public class AvevaFormatterTests
         var result = formatter.Read(dump).ToList()[0];
         result["Description"].Should().Be("");
     }
+
+    [Test]
+    public void Write_ReorderedAttributes_AlignsUnderCorrectHeaders()
+    {
+        var obj1 = new ObjectData([
+            new AttributeData("Template", "$Pump"),
+            new AttributeData("TagName", "P_101"),
+            new AttributeData("HiHi", 100.0),
+            new AttributeData("Description", "Pump 1")
+        ]);
+
+        var obj2 = new ObjectData([
+            new AttributeData("Template", "$Pump"),
+            new AttributeData("TagName", "P_102"),
+            new AttributeData("Description", "Pump 2"),
+            new AttributeData("HiHi", 200.0)
+        ]);
+
+        var formatter = new AvevaFormatter();
+        var result = formatter.Write([obj1, obj2]);
+
+        var lines = result.Split(Environment.NewLine);
+        lines[0].Should().Be(":TEMPLATE=$Pump");
+        lines[1].Should().Be(":Tagname,HiHi,Description");
+        lines[2].Should().Be("P_101,100,Pump 1");
+        lines[3].Should().Be("P_102,200,Pump 2");
+    }
+
+    [Test]
+    public void Write_MissingTemplate_ThrowsInvalidOperationException()
+    {
+        var obj = new ObjectData([
+            new AttributeData("TagName", "P_101"),
+            new AttributeData("Description", "Pump")
+        ]);
+
+        var formatter = new AvevaFormatter();
+        var act = () => formatter.Write([obj]);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Template*");
+    }
+
+    [Test]
+    public void Write_MissingTagName_ThrowsInvalidOperationException()
+    {
+        var obj = new ObjectData([
+            new AttributeData("Template", "$Pump"),
+            new AttributeData("Description", "Pump")
+        ]);
+
+        var formatter = new AvevaFormatter();
+        var act = () => formatter.Write([obj]);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*TagName*");
+    }
 }

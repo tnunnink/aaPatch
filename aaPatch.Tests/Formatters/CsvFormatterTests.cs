@@ -86,4 +86,50 @@ public class CsvFormatterTests
         var result = formatter.Read(csv).ToList()[0];
         result["Description"].Should().Be("");
     }
+
+    [Test]
+    public void Write_ReorderedAttributes_AlignsUnderCorrectHeaders()
+    {
+        var obj1 = new ObjectData([
+            new AttributeData("A", "1"),
+            new AttributeData("B", "2"),
+            new AttributeData("C", "3")
+        ]);
+
+        var obj2 = new ObjectData([
+            new AttributeData("C", "6"),
+            new AttributeData("A", "4"),
+            new AttributeData("B", "5")
+        ]);
+
+        var formatter = new CsvFormatter();
+        var csv = formatter.Write([obj1, obj2]);
+
+        var lines = csv.Split(Environment.NewLine);
+        lines[0].Should().Be("A,B,C");
+        lines[1].Should().Be("1,2,3");
+        lines[2].Should().Be("4,5,6");
+    }
+
+    [Test]
+    public void Write_HeterogeneousSchemas_EmitsUnionHeadersAndEmptyFields()
+    {
+        var obj1 = new ObjectData([
+            new AttributeData("TagName", "Tag1"),
+            new AttributeData("Description", "Desc1")
+        ]);
+
+        var obj2 = new ObjectData([
+            new AttributeData("TagName", "Tag2"),
+            new AttributeData("HiHi", 100.0)
+        ]);
+
+        var formatter = new CsvFormatter();
+        var csv = formatter.Write([obj1, obj2]);
+
+        var lines = csv.Split(Environment.NewLine);
+        lines[0].Should().Be("TagName,Description,HiHi");
+        lines[1].Should().Be("Tag1,Desc1,");
+        lines[2].Should().Be("Tag2,,100");
+    }
 }
