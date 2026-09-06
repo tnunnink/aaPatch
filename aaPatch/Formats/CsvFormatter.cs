@@ -54,14 +54,19 @@ public class CsvFormatter : IObjectFormater
         if (collection.Length == 0)
             throw new InvalidOperationException("Cannot write CSV data: the collection is empty.");
 
-        var headers = collection[0].Select(a => a.Name).ToList();
+        // Aggregate unique headers across all records in first-seen order
+        var headers = collection
+            .SelectMany(record => record.Select(a => a.Name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         headers.ForEach(csv.WriteField);
         csv.NextRecord();
 
         foreach (var record in collection)
         {
-            foreach (var attribute in record)
-                csv.WriteField(attribute.ToString());
+            foreach (var header in headers)
+                csv.WriteField(record[header].ToString());
 
             csv.NextRecord();
         }

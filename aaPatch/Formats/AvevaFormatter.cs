@@ -146,31 +146,46 @@ public class AvevaFormatter : IObjectFormater
         using var writer = new StringWriter();
         using var csv = new CsvWriter(writer, config);
 
+        var collection = data.ToArray();
+
+        foreach (var instance in collection)
+        {
+            if (instance[TemplateId].IsNull || string.IsNullOrWhiteSpace(instance[TemplateId].ToString()))
+                throw new InvalidOperationException(
+                    $"Cannot write AVEVA format: Object is missing required '{TemplateId}'.");
+
+            if (instance[TagNameId].IsNull || string.IsNullOrWhiteSpace(instance[TagNameId].ToString()))
+                throw new InvalidOperationException(
+                    $"Cannot write AVEVA format: Object is missing required '{TagNameId}'.");
+        }
+
         // Need to group output by template for system to import correctly
-        var groups = data.GroupBy(x => x[TemplateId]);
+        var groups = collection.GroupBy(x => x[TemplateId].ToString(), StringComparer.OrdinalIgnoreCase);
 
         foreach (var group in groups)
         {
             // First line for each group is the template key.
             writer.WriteLine($"{TemplateKey}{group.Key}");
 
-            // Write the leading tag name key for each instance.
-            csv.WriteField(TagNameKey);
+            // Aggregate remaining headers across all instances in this template group
+            var headers = group
+                .SelectMany(instance => instance.Where(a => !IsIdentity(a)).Select(a => a.Name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-            // Write remaining headers based on the first object.
-            //todo we probably need to ensure header order matches the order we write the value...
-            var header = group.First().Where(a => !IsIdentity(a)).Select(a => a.Name);
-            group.First().Where(a => !IsIdentity(a)).Select(a => a.Name).ToList().ForEach(csv.WriteField);
+            // Write the leading tag name key for each instance followed by attribute headers
+            csv.WriteField(TagNameKey);
+            headers.ForEach(csv.WriteField);
             csv.NextRecord();
 
             // Write row for each instance in the template group.
             foreach (var instance in group)
             {
-                //Explicitly write the tag name as the first attribute
-                csv.WriteField(instance[TagNameId]);
+                // Explicitly write the tag name as the first attribute since it not part of the headers collection.
+                csv.WriteField(instance[TagNameId].ToString());
 
-                foreach (var attribute in instance.Where(a => !IsIdentity(a)))
-                    csv.WriteField(attribute.ToString());
+                foreach (var header in headers)
+                    csv.WriteField(instance[header].ToString());
 
                 csv.NextRecord();
             }

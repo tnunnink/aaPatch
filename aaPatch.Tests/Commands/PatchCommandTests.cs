@@ -1,5 +1,6 @@
 ﻿using aaPatch.Commands;
 using aaPatch.Formats;
+using FluentAssertions;
 
 namespace aaPatch.Tests.Commands;
 
@@ -395,20 +396,17 @@ public class PatchCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_WithoutIdentitySelections_WritesNullValuesForFields()
+    public async Task ExecuteAsync_WithoutIdentitySelections_ThrowsExceptionForMissingTemplateOrTagName()
     {
-        using var console = new FakeInMemoryConsole();
-        console.WriteInput(SimpleGalaxyDump);
-
-        var command = new PatchCommand
+        var act = async () =>
         {
-            Selections = ["Description"]
+            using var console = new FakeInMemoryConsole();
+            console.WriteInput(SimpleGalaxyDump);
+            var command = new PatchCommand { Selections = ["Description"] };
+            await command.ExecuteAsync(console);
         };
 
-        await command.ExecuteAsync(console);
-
-        var output = console.ReadOutputString();
-        await Verify(output);
+        await act.Should().ThrowAsync<CommandException>();
     }
 
     [Test]
@@ -486,7 +484,8 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Selections = ["NewField := 123"]
+            Selections = ["NewField := 123"],
+            Format = Format.Csv
         };
 
         await command.ExecuteAsync(console);
