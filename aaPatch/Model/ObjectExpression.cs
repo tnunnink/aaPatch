@@ -67,14 +67,13 @@ public partial class ObjectExpression
     {
         var expression = ReferencePattern().Replace(_expression, "it[\"$1\"]");
 
-        var lambda = DynamicExpressionParser.ParseLambda<TValue, TResult>(
-            ParsingConfig,
-            createParameterCtor: false,
-            expression);
-
         try
         {
-            Console.WriteLine(lambda.Body.ToString());
+            var lambda = DynamicExpressionParser.ParseLambda<TValue, TResult>(
+                ParsingConfig,
+                createParameterCtor: false,
+                expression);
+
             return lambda.Compile();
         }
         catch (Exception exception)

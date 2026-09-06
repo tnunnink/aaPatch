@@ -116,16 +116,18 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     /// <summary>
-    /// Attempts to resolve an attribute by its name from the collection of attributes.
-    /// If an explicit match is found, it is returned. If no explicit match exists, attempts
-    /// to find a single attribute whose name starts with the provided input.
+    /// Determines whether the specified attribute name exists within the collection of attributes.
+    /// This method performs an exact match first, and if no match is found, it attempts to locate an attribute
+    /// that starts with the specified name followed by an opening parenthesis.
     /// </summary>
-    /// <param name="name">The name of the attribute to resolve. Can be a full name or the starting portion of the name.</param>
-    /// <param name="attribute">When the method returns, contains the resolved attribute if the resolution succeeds,
-    /// or null if it fails.</param>
+    /// <param name="name">The name of the attribute to check for existence.</param>
     /// <returns>
-    /// True if the resolution succeeds and an attribute is found; otherwise, false if no matching or ambiguous matches exist.
+    /// Returns <c>true</c> if the attribute name exists in the collection, either as an exact match or with a prefix;
+    /// otherwise, <c>false</c>.
     /// </returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the provided attribute name is <c>null</c> or empty.
+    /// </exception>
     private bool ContainsAttribute(string name)
     {
         // Explicit match to the attribute name wins first
@@ -135,15 +137,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
         // Otherwise, help the user and try to find the name starting with the provided text.
         // This is designed to help with accessing AVEVA columns that have type metadata (e.g., MyColumn(MxInteger))
         var prefix = $"{name}(";
-        var matches = _attributes.Keys.Where(k => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
-
-        return matches.Count switch
-        {
-            > 1 => throw new ArgumentException(
-                $"Ambiguous attribute name '{name}'. Multiple attributes match: {string.Join(", ", matches)}. Please specify the full attribute name including type suffix."),
-            1 => true,
-            _ => false
-        };
+        return _attributes.Keys.Any(k => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
