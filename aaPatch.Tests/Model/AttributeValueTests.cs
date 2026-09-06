@@ -710,18 +710,5 @@ public class AttributeValueTests
         nullValue.Matches(".*").Should().BeFalse();
     }
 
-    [Test]
-    public void Null_Arithmetic_ShouldReturnNull()
-    {
-        var nullValue = AttributeValue.Null;
-        var five = new AttributeValue(5);
-
-        (nullValue + five).Should().Be(AttributeValue.Null);
-        (five + nullValue).Should().Be(AttributeValue.Null);
-        (nullValue - five).Should().Be(AttributeValue.Null);
-        (nullValue * five).Should().Be(AttributeValue.Null);
-        (nullValue / five).Should().Be(AttributeValue.Null);
-    }
-
     #endregion
 }

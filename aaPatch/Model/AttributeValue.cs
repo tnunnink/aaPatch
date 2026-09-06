@@ -44,6 +44,12 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     public Type Type => _value?.GetType() ?? typeof(object);
 
     /// <summary>
+    /// Indicates whether the underlying value of the <see cref="AttributeValue"/> instance is null.
+    /// Returns <c>true</c> if the internal value is null; otherwise, <c>false</c>.
+    /// </summary>
+    public bool IsNull => _value is null;
+
+    /// <summary>
     /// Represents a predefined, immutable instance of <see cref="AttributeValue"/> with a value of <c>null</c>.
     /// This property can be used to explicitly signify a null or unset state within the <see cref="AttributeValue"/> context.
     /// </summary>
@@ -281,70 +287,6 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     public static bool operator !=(AttributeValue? left, AttributeValue? right) => !Equals(left ?? Null, right ?? Null);
 
     /// <summary>
-    /// Determines whether an <see cref="AttributeValue"/> instance evaluates to true in a boolean context.
-    /// This operator enables the use of <see cref="AttributeValue"/> in conditional expressions and short-circuit evaluation.
-    /// </summary>
-    /// <param name="attribute">The <see cref="AttributeValue"/> instance to evaluate.</param>
-    /// <returns><c>true</c> if the underlying value is a boolean <c>true</c>; otherwise, <c>false</c>.</returns>
-    public static bool operator true(AttributeValue attribute) => attribute._value is true;
-
-    /// <summary>
-    /// Determines whether an <see cref="AttributeValue"/> instance evaluates to false in a boolean context.
-    /// This operator enables the use of <see cref="AttributeValue"/> in conditional expressions and short-circuit evaluation.
-    /// </summary>
-    /// <param name="attribute">The <see cref="AttributeValue"/> instance to evaluate.</param>
-    /// <returns><c>true</c> if the underlying value is a boolean <c>false</c>; otherwise, <c>false</c>.</returns>
-    public static bool operator false(AttributeValue attribute) => attribute._value is false;
-
-    /// <summary>
-    /// Performs logical negation on an <see cref="AttributeValue"/> instance.
-    /// </summary>
-    /// <param name="value">The <see cref="AttributeValue"/> instance to negate.</param>
-    /// <returns><c>true</c> if the underlying value is a boolean <c>false</c> or null; otherwise, <c>false</c>.</returns>
-    public static bool operator !(AttributeValue value) => value._value switch
-    {
-        bool b => !b,
-        null => true,
-        _ => false
-    };
-
-    /// <summary>
-    /// Adds two <see cref="AttributeValue"/> instances together.
-    /// </summary>
-    /// <param name="left">The left operand.</param>
-    /// <param name="right">The right operand.</param>
-    /// <returns>A new <see cref="AttributeValue"/> containing the result of the addition.</returns>
-    public static AttributeValue operator +(AttributeValue left, AttributeValue right) =>
-        ApplyNumeric(left, right, (l, r) => l + r);
-
-    /// <summary>
-    /// Subtracts one <see cref="AttributeValue"/> instance from another.
-    /// </summary>
-    /// <param name="left">The left operand.</param>
-    /// <param name="right">The right operand.</param>
-    /// <returns>A new <see cref="AttributeValue"/> containing the result of the subtraction.</returns>
-    public static AttributeValue operator -(AttributeValue left, AttributeValue right) =>
-        ApplyNumeric(left, right, (l, r) => l - r);
-
-    /// <summary>
-    /// Multiplies two <see cref="AttributeValue"/> instances.
-    /// </summary>
-    /// <param name="left">The left operand.</param>
-    /// <param name="right">The right operand.</param>
-    /// <returns>A new <see cref="AttributeValue"/> containing the result of the multiplication.</returns>
-    public static AttributeValue operator *(AttributeValue left, AttributeValue right) =>
-        ApplyNumeric(left, right, (l, r) => l * r);
-
-    /// <summary>
-    /// Divides one <see cref="AttributeValue"/> instance by another.
-    /// </summary>
-    /// <param name="left">The left operand.</param>
-    /// <param name="right">The right operand.</param>
-    /// <returns>A new <see cref="AttributeValue"/> containing the result of the division.</returns>
-    public static AttributeValue operator /(AttributeValue left, AttributeValue right) =>
-        ApplyNumeric(left, right, (l, r) => l / r);
-
-    /// <summary>
     /// Determines whether one <see cref="AttributeValue"/> instance is less than another.
     /// </summary>
     /// <param name="left">The first <see cref="AttributeValue"/> instance to compare. Can be null.</param>
@@ -501,32 +443,6 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
             or int or uint
             or long or ulong
             or float or double or decimal;
-    }
-
-    /// <summary>
-    /// Applies a numeric operation to two <see cref="AttributeValue"/> instances
-    /// and returns the resulting <see cref="AttributeValue"/>.
-    /// </summary>
-    /// <param name="left">The left-hand operand of the operation. Must contain a numeric value.</param>
-    /// <param name="right">The right-hand operand of the operation. Must contain a numeric value.</param>
-    /// <param name="operation">A function representing the arithmetic operation to apply to the numeric values.</param>
-    /// <returns>A new <see cref="AttributeValue"/> containing the result of the applied operation, or null if either operand is null.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when either operand does not contain a numeric value, making the operation invalid.</exception>
-    private static AttributeValue ApplyNumeric(AttributeValue left, AttributeValue right,
-        Func<decimal, decimal, decimal> operation)
-    {
-        if (left._value is null || right._value is null)
-            return new AttributeValue(null);
-
-        if (IsNumeric(left._value) && IsNumeric(right._value))
-        {
-            var x = Convert.ToDecimal(left._value, CultureInfo.InvariantCulture);
-            var y = Convert.ToDecimal(right._value, CultureInfo.InvariantCulture);
-            return new AttributeValue(operation(x, y));
-        }
-
-        throw new InvalidOperationException(
-            $"Cannot perform arithmetic on types {left.Type.Name} and {right.Type.Name}");
     }
 
     /// <summary>
