@@ -94,7 +94,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
 
         foreach (var attribute in attributes)
         {
-            if (!TryResolveAttribute(attribute, out _))
+            if (!ContainsAttribute(attribute))
                 return false;
         }
 
@@ -126,33 +126,24 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// <returns>
     /// True if the resolution succeeds and an attribute is found; otherwise, false if no matching or ambiguous matches exist.
     /// </returns>
-    private bool TryResolveAttribute(string name, out AttributeData attribute)
+    private bool ContainsAttribute(string name)
     {
         // Explicit match to the attribute name wins first
-        if (_attributes.TryGetValue(name, out var matched))
-        {
-            attribute = matched;
+        if (_attributes.ContainsKey(name))
             return true;
-        }
 
         // Otherwise, help the user and try to find the name starting with the provided text.
         // This is designed to help with accessing AVEVA columns that have type metadata (e.g., MyColumn(MxInteger))
         var prefix = $"{name}(";
         var matches = _attributes.Keys.Where(k => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
 
-        switch (matches.Count)
+        return matches.Count switch
         {
-            case > 1:
-                throw new ArgumentException(
-                    $"Ambiguous attribute name '{name}'. Multiple attributes match: {string.Join(", ", matches)}. " +
-                    "Please specify the full attribute name including type suffix.");
-            case 1:
-                attribute = _attributes[matches[0]];
-                return true;
-            default:
-                attribute = null!;
-                return false;
-        }
+            > 1 => throw new ArgumentException(
+                $"Ambiguous attribute name '{name}'. Multiple attributes match: {string.Join(", ", matches)}. Please specify the full attribute name including type suffix."),
+            1 => true,
+            _ => false
+        };
     }
 
     /// <summary>
