@@ -1,37 +1,30 @@
-﻿# aaPatch
+# aaPatch
 
-`aaPatch` is a unified patch-artifact generator for AVEVA System Platform Galaxy dump (CSV) files. It follows a
-structured transformation pipeline to filter, modify, and format Galaxy exports, enabling robust bulk attribute updates
-and automated modifications.
+`aaPatch` is a unified patch-artifact generator for AVEVA System Platform Galaxy dump (CSV) files. It follows a structured transformation pipeline to filter, modify, and format Galaxy exports, enabling robust bulk attribute updates and automated modifications.
 
 ## Transformation Pipeline
 
 The command follows a deterministic pipeline:
 
 ``` text
-read → filter → patch → add → select → format → write
+read → filter → patch → project → write
 ```
 
-1. **Read**: Loads AVEVA Galaxy dump CSV (from file or stdin).
-2. **Filter**: Restricts which objects proceed through the pipeline.
-3. **Patch**: Applies optional modifications to filtered objects.
-4. **Add**: Appends static fields to every filtered output object.
-5. **Select**: Controls the final fields and applies aliases.
-6. **Format**: Emits the result as AVEVA (CSV) or JSON.
-7. **Write**: Outputs the result (to file or stdout).
+1.  **Read**: Loads AVEVA Galaxy dump (CSV), JSON, or plain CSV (from file or stdin).
+2.  **Filter**: Restricts which objects proceed through the pipeline using attribute existence (`--has`) or complex expressions (`--where`).
+3.  **Patch**: Applies modifications to object attributes using dynamic expressions.
+4.  **Project**: Controls the final fields, applies aliases, and transforms values.
+5.  **Write**: Outputs the result in AVEVA (CSV), JSON, or CSV format.
 
 ## Features
 
-- **Unified Artifact Generation**: Transform Galaxy dumps into customized outputs.
-- **Bulk Attribute Updates**: Update object attributes across many objects simultaneously.
-- **Find and Replace**: Perform targeted string replacements within specific attributes or globally.
-- **Advanced Filtering**: Restrict output by Template, TagName, or any attribute using wildcards.
-- **Static Output Fields**: Append new static attributes to each object for transformations.
-- **Selection and Aliasing**: Project specific fields and rename them in the output.
-- **Multiple Formats**: Support for native AVEVA CSV and structured JSON output.
-- **Robust Galaxy Parsing**: Case-insensitive template detection with support for CRLF and LF line endings.
-- **Standard Stream Support**: Seamlessly integrates into pipelines using stdin and stdout.
-- **Cross-Platform**: Built on .NET 10, running on Windows, Linux, and macOS.
+-   **Unified Artifact Generation**: Transform Galaxy dumps into customized outputs.
+-   **Expression-Based Logic**: Use C#-style expressions for advanced filtering and patching.
+-   **Bulk Attribute Updates**: Update object attributes across many objects simultaneously.
+-   **Dynamic Projections**: Select, rename, and transform fields in the output.
+-   **Multiple Formats**: Full support for native AVEVA CSV, standard CSV, and structured JSON.
+-   **Robust Galaxy Parsing**: Automatic format detection and handling of heterogeneous schemas.
+-   **Standard Stream Support**: Seamlessly integrates into shell pipelines.
 
 ## Installation
 
@@ -53,125 +46,76 @@ aapatch [options]
 
 ### Options
 
-| Option         | Shorthand | Description                                                                                        |
-|----------------|-----------|----------------------------------------------------------------------------------------------------|
-| `--input`      | `-i`      | Path to the input Galaxy dump CSV file. If omitted, reads from stdin.                              |
-| `--output`     | `-o`      | Path to the output CSV file. If omitted, writes to stdout.                                         |
-| `--filter`     | `-f`      | Filter which objects are included in the output. Default attribute is TagName. Supports wildcards. |
-| `--patch`      | `-p`      | Patch to apply to filtered objects. Can be used multiple times.                                    |
-| `--add`        | `-a`      | Add a static attribute to each output object. Can be used multiple times.                          |
-| `--select`     | `-s`      | Select and optionally alias fields for output. Can be used multiple times.                         |
-| `--format`     |           | Output format: `aveva` (default) or `json`.                                                        |
-| `--match-case` | `-m`      | Perform case-sensitive matching for find-replace operations.                                       |
+| Option      | Shorthand | Description                                                                |
+| :---------- | :-------- | :------------------------------------------------------------------------- |
+| `--input`   | `-i`      | Path to the input file. If omitted, reads from stdin.                      |
+| `--output`  | `-o`      | Path to the output file. If omitted, writes to stdout.                     |
+| `--where`   | `-w`      | Filter objects using a dynamic expression.                                 |
+| `--has`     | `-c`      | Filter objects that contain the specified attribute(s).                    |
+| `--patch`   | `-p`      | Patch expression to apply to matching objects.                             |
+| `--select`  | `-s`      | Select and transform fields for output.                                    |
+| `--format`  | `-f`      | Output format: `aveva` (default), `json`, or `csv`.                        |
 
-### Patch Formats
-
-There are three primary ways to modify attributes:
-
-| Type                       | Syntax                   | Description                                                 | Example                     |
-|:---------------------------|:-------------------------|:------------------------------------------------------------|:----------------------------|
-| **Direct Assignment**      | `Attribute=Value`        | Sets the specified attribute to the exact value provided.   | `-p "Description=New Pump"` |
-| **Attribute Find/Replace** | `Attribute:Find=Replace` | Replaces `Find` with `Replace` within a specific attribute. | `-p "Address:192=10"`       |
-| **Global Find/Replace**    | `:Find=Replace`          | Replaces `Find` with `Replace` across **all** attributes.   | `-p ":OldSite=New"`         |
-
-By default, find and replace operations are **case-insensitive**. Use the `--match-case` or `-m` flag for case-sensitive
-matching:
-
+For detailed syntax rules, run:
 ```bash
-aapatch -i Export.csv -p "Description:Pump=Motor" --match-case
+aapatch info
 ```
 
-### Static Output Fields
+## Expression Syntax
 
-The `--add` or `-a` option appends new static fields to every object that passes the filter.
+`aaPatch` uses `System.Linq.Dynamic.Core` for expressions in `--where`, `--patch`, and `--select`.
 
-| Type              | Syntax            | Description                                               | Example               |
-|:------------------|:------------------|:----------------------------------------------------------|:----------------------|
-| **Static Adding** | `Attribute=Value` | Adds a new attribute with the given value to each object. | `-a "source=AVEVA"` |
+### Property Access
+Use curly braces to reference object attributes: `{AttributeName}`.
 
-### Selection and Aliases
+### Filtering (`--where`)
+Expressions should return a boolean value.
+-   `--where '{TagName}.StartsWith("PLC_")'`
+-   `--where '{Area} == "Production" && {IsRunning} == true'`
 
-The `--select` or `-s` option controls which attributes are included in the final output. If no selections are provided,
-all fields are retained. Field order is preserved as specified in the command.
+### Patching (`--patch`)
+Patches can be global or targeted.
+-   **Targeted**: `{Attribute} := Expression`
+    -   `-p '{Description} := "Updated: " + it'`
+    -   `-p '{Value} := {Value} * 1.1'`
+-   **Global**: `Expression` (Replaces values across all attributes based on the expression).
 
-| Feature              | Syntax                | Description                                                           |
-|:---------------------|:----------------------|:----------------------------------------------------------------------|
-| **Simple Selection** | `--select TagName`    | Includes the specified attribute in the output.                       |
-| **Aliasing**         | `--select Attr=Alias` | Renames the attribute. In JSON output, this becomes the property key. |
-
-*Note: Duplicate projected names are rejected.*
-
-### Output Formats
-
-| Format              | Description                                              | Requirements / Behavior                             |
-|:--------------------|:---------------------------------------------------------|:----------------------------------------------------|
-| **AVEVA** (default) | Reconstructs native AVEVA template sections and columns. | Requires `Template` and `TagName` in the selection. |
-| **JSON**            | Emits a formatted array of flat objects.                 | Values are mapped to numbers, Booleans, or strings. |
+### Projection (`--select`)
+-   **Simple Selection**: `-s TagName`
+-   **Aliasing/Transformation**: `Alias := Expression`
+    -   `-s 'name := {TagName}'`
+    -   `-s 'display := {Description} ?? {TagName}'`
 
 ## Examples
 
 ### 1. Simple Attribute Update
-
-Update the description for all objects in a dump file:
-
+Update the description for all objects:
 ```bash
-aapatch -i GalaxyExport.csv -o PatchedExport.csv -p "Description=Standardized Description"
+aapatch -i Export.csv -o Patched.csv -p '{Description} := "Standardized Description"'
 ```
 
-### 2. Filtering Output
-
-Update a PLC address for specific objects and only include them in the output:
-
+### 2. Complex Filtering
+Update a PLC address only for specific pumps:
 ```bash
-aapatch -i Export.csv -p "ShortDesc:OldSystem=NewSystem" -f "Template=$Pump_Base" -f "P_10*"
+aapatch -i Export.csv -w '{Template} == "$Pump" && {TagName}.Like("P_10*")' -p '{Address} := "10.0.0.1"'
 ```
 
-### 3. Attribute-based Filtering
-
-Update an attribute only for objects where another attribute matches a pattern:
-
+### 3. Calculation and Type Awareness
+Increase a value by 10% for running objects:
 ```bash
-aapatch -i Export.csv -p "ScanGroup=Fast" -f "Area=Production*"
+aapatch -i Export.csv -w '{Status} == "Running"' -p '{Setpoint} := {Setpoint} * 1.1'
 ```
 
-### 4. Multiple Operations and Global Replace
-
-Apply multiple patches including a global find-replace in a single command:
-
+### 4. Selection and Transformation
+Generate a simplified JSON inventory:
 ```bash
-aapatch -i Export.csv -p "Area=Production" -p "Comment:FIXME=DONE" -p ":OldServer=NewServer"
+aapatch -i galaxy.csv -f json -s 'id := {RecordId}' -s TagName -s 'area := {Area}.ToUpper()'
 ```
 
-### 6. Selection and Aliasing
-
-Rename the description field and only include identity fields:
-
-```bash
-aapatch -i Export.csv -s Template -s TagName -s Description=displayName
-```
-
-### 7. JSON Output with Additions
-
-Generate a JSON representation for Ignition import with static fields and aliasing:
-
-```bash
-aaPatch \
-  --input galaxy.csv \
-  --format json \
-  --add 'source=AVEVA' \
-  --add 'provider=default' \
-  --add 'enabled=true' \
-  --select TagName=name \
-  --select source=system \
-  --select enabled
-```
-
-### 8. Pipelining
-
+### 5. Pipelining
 Use `aaPatch` in a command-line pipeline:
-
 ```bash
-cat GalaxyExport.csv | aapatch -p "Engine=AppEngine_002" > UpdatedExport.csv
+cat Export.csv | aapatch -w '{Area} == "Utility"' -s TagName > Tags.txt
 ```
 
 ## License
