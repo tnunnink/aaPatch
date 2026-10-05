@@ -203,14 +203,20 @@ public class AvevaFormatter : IObjectFormater
     /// </summary>
     private static object? ParseValue(string? text, Type type)
     {
-        return text switch
+        // Galaxy dumps frequently contain empty cells for typed attributes; keep strings as-is,
+        // but treat empty typed values as "no value" instead of failing to parse them.
+        if (string.IsNullOrWhiteSpace(text))
+            return type == typeof(string) ? text : null;
+
+        var culture = CultureInfo.InvariantCulture;
+
+        return type switch
         {
-            null => null,
             _ when type == typeof(bool) => bool.Parse(text),
-            _ when type == typeof(int) => int.Parse(text),
-            _ when type == typeof(long) => long.Parse(text),
-            _ when type == typeof(float) => float.Parse(text),
-            _ when type == typeof(double) => double.Parse(text),
+            _ when type == typeof(int) => int.Parse(text, NumberStyles.Integer, culture),
+            _ when type == typeof(long) => long.Parse(text, NumberStyles.Integer, culture),
+            _ when type == typeof(float) => float.Parse(text, NumberStyles.Float, culture),
+            _ when type == typeof(double) => double.Parse(text, NumberStyles.Float, culture),
             _ => text
         };
     }

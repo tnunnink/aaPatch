@@ -49,8 +49,6 @@ public partial class ObjectExpression
         if (string.IsNullOrWhiteSpace(expression))
             throw new ArgumentException("Expression cannot be null, empty, or whitespace.", nameof(expression));
 
-        //todo is there any other validation to perform?
-
         _expression = expression;
     }
 
