@@ -161,7 +161,7 @@ public class AvevaFormatter : IObjectFormater
 
             // Aggregate remaining headers across all instances in this template group
             var headers = group
-                .SelectMany(instance => instance.Where(a => !a.IsIdentity).Select(a => a.Name))
+                .SelectMany(instance => instance.Attributes.Where(a => !a.IsIdentity).Select(a => a.Name))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 

@@ -55,7 +55,7 @@ public class JsonFormatter : IObjectFormater
     /// </exception>
     public string Write(IEnumerable<ObjectData> data)
     {
-        var dictionary = data.Select(x => x.ToDictionary(
+        var dictionary = data.Select(x => x.Attributes.ToDictionary(
             a => a.Name,
             a => a.Value.GetValue(),
             StringComparer.OrdinalIgnoreCase)

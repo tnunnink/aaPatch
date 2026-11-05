@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Linq.Dynamic.Core.CustomTypeProviders;
 
 namespace aaPatch.Model;
@@ -8,7 +7,7 @@ namespace aaPatch.Model;
 /// tag name reference, along with the dynamic collection of attribute key/value pairs.
 /// </summary>
 [DynamicLinqType]
-public class ObjectData : IReadOnlyCollection<AttributeData>
+public class ObjectData
 {
     /// <summary>
     /// Provides a predefined string comparer that performs case-insensitive string comparisons.
@@ -46,6 +45,13 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// Gets the tag name associated with the exported object instance.
     /// </summary>
     public AttributeValue TagName => this[nameof(TagName)];
+
+    /// <summary>
+    /// Gets the collection of attributes associated with this object, represented as name/value metadata entries.
+    /// The returned sequence contains the stored attribute data values for the object, including identity attributes
+    /// such as template and tag name when present.
+    /// </summary>
+    public IEnumerable<AttributeData> Attributes => _attributes.Values;
 
     /// <summary>
     /// Retrieves the value of an attribute by its name in the context of the current object.
@@ -109,13 +115,21 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     }
 
     /// <summary>
+    /// Creates a new object data instance with the specified text replaced across all attribute values using a case-insensitive search.
+    /// </summary>
+    /// <param name="find">The text to search for in each attribute value.</param>
+    /// <param name="replace">The text to substitute for each matching occurrence.</param>
+    /// <returns>A new object data instance containing the updated attribute values.</returns>
+    public ObjectData Replace(string find, string replace) => Replace(find, replace, false);
+
+    /// <summary>
     /// Creates a new object data instance with the specified text replaced across all attribute values.
     /// </summary>
     /// <param name="find">The text to search for in each attribute value.</param>
     /// <param name="replace">The text to substitute for each matching occurrence.</param>
     /// <param name="matchCase">A value indicating whether the search should be case-sensitive.</param>
     /// <returns>A new object data instance containing the updated attribute values.</returns>
-    public ObjectData Replace(string find, string replace, bool matchCase = false)
+    public ObjectData Replace(string find, string replace, bool matchCase)
     {
         var attributes = _attributes.Values.Select(a =>
         {
@@ -134,7 +148,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// <returns>A new object containing the differing attributes from <paramref name="other" /> and its identity attributes.</returns>
     public ObjectData Diff(ObjectData other)
     {
-        var attributes = other.Where(a => a.IsIdentity || !this[a.Name].Equals(a.Value));
+        var attributes = other.Attributes.Where(a => a.IsIdentity || !this[a.Name].Equals(a.Value));
         return new ObjectData(attributes);
     }
 
@@ -147,7 +161,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     public bool HasChanges(ObjectData other)
     {
         // Has any non-identity attribute changed?
-        return other.Any(a => !a.IsIdentity && !this[a.Name].Equals(a.Value));
+        return other.Attributes.Any(a => !a.IsIdentity && !this[a.Name].Equals(a.Value));
     }
 
     /// <summary>
@@ -158,11 +172,6 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// A comma-separated string that represents the values of the object's attributes.
     /// </returns>
     public override string ToString() => string.Join(",", _attributes.Select(a => a.ToString()));
-
-    /// <inheritdoc />
-    public IEnumerator<AttributeData> GetEnumerator() => _attributes.Values.AsEnumerable().GetEnumerator();
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     /// <summary>
     /// Determines whether the specified attribute name exists within the collection of attributes.

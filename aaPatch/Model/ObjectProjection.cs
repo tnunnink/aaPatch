@@ -65,7 +65,7 @@ public sealed record ObjectProjection
     public IEnumerable<AttributeData> Project(ObjectData data)
     {
         if (_isPattern)
-            return data.Where(a => Like(a.Name, Name));
+            return data.Attributes.Where(a => Like(a.Name, Name));
 
         var selection = _cached ??= _expression.Compile<ObjectData, object?>();
         var value = selection(data);

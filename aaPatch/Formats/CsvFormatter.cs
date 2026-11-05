@@ -56,7 +56,7 @@ public class CsvFormatter : IObjectFormater
 
         // Aggregate unique headers across all records in first-seen order
         var headers = collection
-            .SelectMany(record => record.Select(a => a.Name))
+            .SelectMany(record => record.Attributes.Select(a => a.Name))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 

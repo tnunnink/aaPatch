@@ -112,7 +112,10 @@ public static class ObjectExtensions
 
             foreach (var item in data)
             {
-                var attributes = projections.SelectMany(p => p.Project(item));
+                var attributes = projections
+                    .SelectMany(p => p.Project(item))
+                    .DistinctBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
+                
                 results.Add(new ObjectData(attributes));
             }
 
