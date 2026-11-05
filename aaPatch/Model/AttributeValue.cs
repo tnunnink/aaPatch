@@ -133,6 +133,191 @@ public sealed class AttributeValue : IEquatable<AttributeValue>, IComparable
     public AttributeValue Replace(string find, string replace, bool match) => new(ReplaceText(find, replace, match));
 
     /// <summary>
+    /// Extracts a captured group from the first match of a regular expression against the value's string representation.
+    /// </summary>
+    /// <param name="pattern">The regular expression pattern to match.</param>
+    /// <param name="group">The zero-based capture group index. Group zero is the entire match.</param>
+    /// <returns>The captured group, or <see cref="Null"/> when the value is null, the pattern does not match,
+    /// or the requested group does not exist or capture a value.</returns>
+    public AttributeValue Extract(string pattern, int group)
+    {
+        if (_value is null || group < 0)
+            return Null;
+
+        var match = Regex.Match(ToString(), pattern);
+        if (!match.Success || group >= match.Groups.Count || !match.Groups[group].Success)
+            return Null;
+
+        return new AttributeValue(match.Groups[group].Value);
+    }
+
+    /// <summary>
+    /// Extracts the first capture group from the first regular expression match.
+    /// </summary>
+    /// <param name="pattern">The regular expression pattern to match.</param>
+    /// <returns>The first captured group, or <see cref="Null"/> when there is no match or capture.</returns>
+    public AttributeValue Extract(string pattern) => Extract(pattern, 1);
+
+    /// <summary>
+    /// Splits the value's string representation by a separator and returns the token at the specified index.
+    /// Negative indices count from the end of the token list.
+    /// </summary>
+    /// <param name="separator">The literal separator used to split the value.</param>
+    /// <param name="index">The zero-based token index, or a negative index counted from the end.</param>
+    /// <returns>The selected token, or <see cref="Null"/> when the value is null, the separator is null,
+    /// or the index is outside the token list.</returns>
+    public AttributeValue Split(string? separator, int index)
+    {
+        if (_value is null || separator is null)
+            return Null;
+
+        var text = ToString();
+        var tokens = separator.Length == 0
+            ? [text]
+            : text.Split(separator);
+        var resolvedIndex = index < 0 ? (long)tokens.Length + index : index;
+
+        return resolvedIndex < 0 || resolvedIndex >= tokens.Length
+            ? Null
+            : new AttributeValue(tokens[(int)resolvedIndex]);
+    }
+
+    /// <summary>
+    /// Splits the value's string representation by a separator and returns the first token.
+    /// </summary>
+    /// <param name="separator">The literal separator used to split the value.</param>
+    /// <returns>The first token, or <see cref="Null"/> when the value is null or the separator is null.</returns>
+    public AttributeValue Split(string? separator) => Split(separator, 0);
+
+    /// <summary>
+    /// Returns a bounds-safe substring, interpreting a negative start index as an offset from the end.
+    /// </summary>
+    /// <param name="start">The zero-based start index, or a negative offset from the end of the value.</param>
+    /// <param name="length">The requested substring length. Negative lengths are treated as zero.</param>
+    /// <returns>The substring with the start and length clamped to the value's bounds, or <see cref="Null"/>
+    /// when the underlying value is null.</returns>
+    public AttributeValue Slice(int start, int length)
+    {
+        if (_value is null)
+            return Null;
+
+        var text = ToString();
+        var resolvedStart = start < 0 ? text.Length + (long)start : start;
+        var clampedStart = (int)Math.Clamp(resolvedStart, 0L, text.Length);
+        var clampedLength = Math.Clamp(length, 0, text.Length - clampedStart);
+
+        return new AttributeValue(text.Substring(clampedStart, clampedLength));
+    }
+
+    /// <summary>
+    /// Returns the substring from the specified start index to the end of the value.
+    /// Negative start indices count backwards from the end.
+    /// </summary>
+    /// <param name="start">The zero-based start index, or a negative offset from the end of the value.</param>
+    /// <returns>The substring with the start index clamped to the value's bounds, or <see cref="Null"/>
+    /// when the underlying value is null.</returns>
+    public AttributeValue Slice(int start) => Slice(start, int.MaxValue);
+
+    /// <summary>
+    /// Returns the text before the first occurrence of a delimiter.
+    /// </summary>
+    /// <param name="delimiter">The literal delimiter to search for.</param>
+    /// <returns>The text before the delimiter, or <see cref="Null"/> if the value is null or the delimiter is not found.</returns>
+    public AttributeValue Before(string? delimiter)
+    {
+        if (_value is null || delimiter is null)
+            return Null;
+
+        var text = ToString();
+        var index = text.IndexOf(delimiter, StringComparison.Ordinal);
+        return index < 0 ? Null : new AttributeValue(text[..index]);
+    }
+
+    /// <summary>
+    /// Returns the text after the first occurrence of a delimiter.
+    /// </summary>
+    /// <param name="delimiter">The literal delimiter to search for.</param>
+    /// <returns>The text after the delimiter, or <see cref="Null"/> if the value is null or the delimiter is not found.</returns>
+    public AttributeValue After(string? delimiter)
+    {
+        if (_value is null || delimiter is null)
+            return Null;
+
+        var text = ToString();
+        var index = text.IndexOf(delimiter, StringComparison.Ordinal);
+        return index < 0 ? Null : new AttributeValue(text[(index + delimiter.Length)..]);
+    }
+
+    /// <summary>
+    /// Returns the text before the last occurrence of a delimiter.
+    /// </summary>
+    /// <param name="delimiter">The literal delimiter to search for.</param>
+    /// <returns>The text before the last delimiter, or <see cref="Null"/> if the value is null or the delimiter is not found.</returns>
+    public AttributeValue BeforeLast(string? delimiter)
+    {
+        if (_value is null || delimiter is null)
+            return Null;
+
+        var text = ToString();
+        var index = text.LastIndexOf(delimiter, StringComparison.Ordinal);
+        return index < 0 ? Null : new AttributeValue(text[..index]);
+    }
+
+    /// <summary>
+    /// Returns the text after the last occurrence of a delimiter.
+    /// </summary>
+    /// <param name="delimiter">The literal delimiter to search for.</param>
+    /// <returns>The text after the last delimiter, or <see cref="Null"/> if the value is null or the delimiter is not found.</returns>
+    public AttributeValue AfterLast(string? delimiter)
+    {
+        if (_value is null || delimiter is null)
+            return Null;
+
+        var text = ToString();
+        var index = text.LastIndexOf(delimiter, StringComparison.Ordinal);
+        return index < 0 ? Null : new AttributeValue(text[(index + delimiter.Length)..]);
+    }
+
+    /// <summary>
+    /// Left-pads the value's string representation to a minimum width.
+    /// </summary>
+    /// <param name="totalWidth">The minimum resulting width.</param>
+    /// <param name="paddingChar">The string repeated to fill the left side. Defaults to <c>"0"</c>.</param>
+    /// <returns>The padded value, or <see cref="Null"/> when the underlying value is null.</returns>
+    public AttributeValue PadLeft(int totalWidth, string paddingChar = "0")
+    {
+        if (_value is null)
+            return Null;
+
+        var text = ToString();
+        var requiredPaddingLength = totalWidth - text.Length;
+        if (requiredPaddingLength <= 0 || string.IsNullOrEmpty(paddingChar))
+            return new AttributeValue(text);
+
+        var repeatCount = (requiredPaddingLength - 1) / paddingChar.Length + 1;
+        var padding = string.Concat(Enumerable.Repeat(paddingChar, repeatCount));
+        return new AttributeValue(padding[^requiredPaddingLength..] + text);
+    }
+
+    /// <summary>
+    /// Removes leading and trailing whitespace from the value's string representation.
+    /// </summary>
+    /// <returns>The trimmed value, or <see cref="Null"/> when the underlying value is null.</returns>
+    public AttributeValue Trim() => _value is null ? Null : new AttributeValue(ToString().Trim());
+
+    /// <summary>
+    /// Converts the value's string representation to invariant uppercase.
+    /// </summary>
+    /// <returns>The uppercase value, or <see cref="Null"/> when the underlying value is null.</returns>
+    public AttributeValue ToUpper() => _value is null ? Null : new AttributeValue(ToString().ToUpperInvariant());
+
+    /// <summary>
+    /// Converts the value's string representation to invariant lowercase.
+    /// </summary>
+    /// <returns>The lowercase value, or <see cref="Null"/> when the underlying value is null.</returns>
+    public AttributeValue ToLower() => _value is null ? Null : new AttributeValue(ToString().ToLowerInvariant());
+
+    /// <summary>
     /// Returns a string representation of the value wrapped by the <see cref="AttributeValue"/> class.
     /// </summary>
     /// <returns>

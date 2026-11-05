@@ -21,6 +21,13 @@ public class PatchCommandTests
         V_201,Gate Valve,True
         """;
 
+    private const string StringHelperGalaxyDump =
+        """
+        :TEMPLATE=$Instrumentation
+        :Tagname,InputSource
+        FAKE_DEVICE_MOTOR01_Sample,
+        """;
+
     [Test]
     public async Task ExecuteAsync_SimplePatch_HasVerifiedOutput()
     {
@@ -71,6 +78,40 @@ public class PatchCommandTests
         var output = console.ReadOutputString();
         Assert.That(output, Does.Contain("PLC_P_101.Centrifugal Pump"));
         Assert.That(output, Does.Contain("PLC_V_201.Gate Valve"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_BeforeExpression_ExtractsDynamicTagPrefix()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(StringHelperGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Patches = ["{InputSource} := \"PLC_\" + {TagName}.Before(\"_MOTOR\") + \".PV\""],
+            Format = Format.Csv
+        };
+
+        await command.ExecuteAsync(console);
+
+        Assert.That(console.ReadOutputString(), Does.Contain("PLC_FAKE_DEVICE.PV"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_ExtractExpression_UsesDefaultCaptureGroup()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(StringHelperGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Patches = ["{InputSource} := \"Motor_\" + {TagName}.Extract(\"MOTOR_?(\\\\d+)\")"],
+            Format = Format.Csv
+        };
+
+        await command.ExecuteAsync(console);
+
+        Assert.That(console.ReadOutputString(), Does.Contain("Motor_01"));
     }
 
     [Test]

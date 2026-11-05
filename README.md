@@ -97,6 +97,14 @@ The `AttributeValue` class exposes several built-in helper methods that can be c
 | `.Like(pattern)` | `bool` | Performs SQL-style wildcard pattern matching (`%` matches zero or more characters, `?` matches a single character). |
 | `.Matches(pattern)` | `bool` | Determines whether the attribute value matches a regular expression `pattern`. |
 | `.Replace(find, replace, [match])` | `AttributeValue` | Replaces occurrences of `find` with `replace`. Case-insensitive by default; set `match` to `true` for case-sensitive matching. |
+| `.Extract(pattern)` / `.Extract(pattern, group)` | `AttributeValue` | Returns a regex capture group (group 1 by default), or null when no match or capture exists. |
+| `.Split(separator)` / `.Split(separator, index)` | `AttributeValue` | Returns a token by index; negative indices count from the end, and out-of-range indices return null. |
+| `.Slice(start)` / `.Slice(start, length)` | `AttributeValue` | Returns a bounds-clamped substring; negative starts count backward from the end. |
+| `.Before(delimiter)` / `.After(delimiter)` | `AttributeValue` | Returns the text before or after the first delimiter occurrence, or null when not found. |
+| `.BeforeLast(delimiter)` / `.AfterLast(delimiter)` | `AttributeValue` | Returns the text before or after the last delimiter occurrence, or null when not found. |
+| `.PadLeft(totalWidth, [paddingChar])` | `AttributeValue` | Pads on the left to the requested width, using `"0"` by default. |
+| `.Trim()` | `AttributeValue` | Removes leading and trailing whitespace. |
+| `.ToUpper()` / `.ToLower()` | `AttributeValue` | Converts the string representation using invariant casing. |
 | `.As(type)` | `AttributeValue` | Converts the attribute value to the specified .NET type. |
 
 ### Filtering (`--where`)
@@ -105,7 +113,7 @@ Filter expressions must evaluate to a boolean (`bool`).
 - `--where '{Area} == "Production" && {IsRunning} == true'`
 - `--where '{TagName}.Like("P_10?")'`
 - `--where '{Description}.Contains("pump", false)'`
-- `--where '{Address}.Matches(@"^192\.168\.\d+\.\d+$")'`
+- `--where '{Address}.Matches("^192\\.168\\.\\d+\\.\\d+$")'`
 - `--where '!{Area}.IsNull'`
 
 ### Patching (`--patch`) & Find-and-Replace
@@ -116,6 +124,8 @@ Patches modify matching objects and support both targeted and global modes:
   - Set static value: `-p '{Description} := "Standard Pump"'`
   - Calculation: `-p '{Setpoint} := {Setpoint} * 1.1'`
   - Cross-field assignment: `-p '{InputSource} := "PLC_" + {TagName} + ".PV"'`
+  - Extract a dynamic prefix before a delimiter: `-p '{InputSource} := "PLC_" + {TagName}.Before("_MOTOR") + ".PV"'`
+  - Extract a regex capture: `-p '{InputSource} := "Motor_" + {TagName}.Extract("MOTOR_?(\\d+)")'`
   - Find and replace (case-insensitive): `-p '{Description} := {Description}.Replace("OldText", "NewText")'`
   - Find and replace (case-sensitive): `-p '{TagName} := {TagName}.Replace("p_", "P_", true)'`
   - Cross-field find and replace: `-p '{InputSource} := {InputSource}.Replace("OLD", {TagName})'`

@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 using aaPatch.Model;
 
 namespace aaPatch.Formats;
@@ -15,7 +16,11 @@ public class JsonFormatter : IObjectFormater
     /// Defines the JSON serialization options used for customizing the behavior of JSON output,
     /// such as enabling indented formatting for better readability of the serialized data.
     /// </summary> 
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals
+    };
 
     /// <summary>
     /// Deserializes a JSON string into a collection of <see cref="ObjectData"/> instances.

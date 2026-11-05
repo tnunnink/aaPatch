@@ -651,6 +651,127 @@ public class AttributeValueTests
         result.Should().Be(expected);
     }
 
+    [Test]
+    public void Extract_WhenRegexMatches_ReturnsRequestedCaptureGroup()
+    {
+        var value = new AttributeValue("FAKE_DEVICE_MOTOR01_Sample");
+
+        value.Extract("^(.+)_MOTOR", 1).ToString().Should().Be("FAKE_DEVICE");
+        value.Extract(@"MOTOR_?(\d+)").ToString().Should().Be("01");
+    }
+
+    [Test]
+    public void Extract_WhenMatchOrGroupIsMissing_ReturnsNull()
+    {
+        var value = new AttributeValue("FAKE_DEVICE_MOTOR01_Sample");
+
+        value.Extract("^NoMatch").IsNull.Should().BeTrue();
+        value.Extract("^(.*)$", 2).IsNull.Should().BeTrue();
+        value.Extract("^(optional)?FAKE", 1).IsNull.Should().BeTrue();
+    }
+
+    [Test]
+    public void Split_WhenIndexIsValid_ReturnsRequestedToken()
+    {
+        var value = new AttributeValue("A_B_C");
+
+        value.Split("_", 0).ToString().Should().Be("A");
+        value.Split("_", 1).ToString().Should().Be("B");
+        value.Split("_").ToString().Should().Be("A");
+    }
+
+    [Test]
+    public void Split_WhenIndexIsNegativeOrOutOfRange_ReturnsExpectedTokenOrNull()
+    {
+        var value = new AttributeValue("A_B_C");
+
+        value.Split("_", -1).ToString().Should().Be("C");
+        value.Split("_", -4).IsNull.Should().BeTrue();
+        value.Split("_", 3).IsNull.Should().BeTrue();
+    }
+
+    [Test]
+    public void Slice_WhenBoundsAreValid_ReturnsRequestedSubstring()
+    {
+        var value = new AttributeValue("abcdef");
+
+        value.Slice(2, 3).ToString().Should().Be("cde");
+        value.Slice(-3).ToString().Should().Be("def");
+        value.Slice(-3, 2).ToString().Should().Be("de");
+    }
+
+    [Test]
+    public void Slice_WhenBoundsExceedStringLength_ClampsWithoutThrowing()
+    {
+        var value = new AttributeValue("abcdef");
+
+        value.Slice(4, int.MaxValue).ToString().Should().Be("ef");
+        value.Slice(int.MaxValue, int.MaxValue).ToString().Should().BeEmpty();
+        value.Slice(int.MinValue, int.MaxValue).ToString().Should().Be("abcdef");
+        value.Slice(2, -1).ToString().Should().BeEmpty();
+    }
+
+    [Test]
+    public void DelimiterHelpers_WhenDelimitersArePresent_ReturnExpectedSections()
+    {
+        var value = new AttributeValue("FAKE_DEVICE_MOTOR01");
+
+        value.Before("_MOTOR").ToString().Should().Be("FAKE_DEVICE");
+        value.After("_MOTOR").ToString().Should().Be("01");
+        new AttributeValue("A_B_C").BeforeLast("_").ToString().Should().Be("A_B");
+        new AttributeValue("A_B_C").AfterLast("_").ToString().Should().Be("C");
+    }
+
+    [Test]
+    public void DelimiterHelpers_WhenDelimiterIsMissing_ReturnNull()
+    {
+        var value = new AttributeValue("A_B_C");
+
+        value.Before("-").IsNull.Should().BeTrue();
+        value.After("-").IsNull.Should().BeTrue();
+        value.BeforeLast("-").IsNull.Should().BeTrue();
+        value.AfterLast("-").IsNull.Should().BeTrue();
+    }
+
+    [Test]
+    public void PadLeft_UsesSpecifiedWidthAndPaddingString()
+    {
+        var value = new AttributeValue("42");
+
+        value.PadLeft(5).ToString().Should().Be("00042");
+        value.PadLeft(6, "ab").ToString().Should().Be("abab42");
+        value.PadLeft(1).ToString().Should().Be("42");
+    }
+
+    [Test]
+    public void TrimAndCaseHelpers_TransformStringValue()
+    {
+        var value = new AttributeValue("  Hello World  ");
+
+        value.Trim().ToString().Should().Be("Hello World");
+        value.ToUpper().ToString().Should().Be("  HELLO WORLD  ");
+        value.ToLower().ToString().Should().Be("  hello world  ");
+    }
+
+    [Test]
+    public void StringHelpers_WhenUnderlyingValueIsNull_ReturnNull()
+    {
+        var value = AttributeValue.Null;
+
+        value.Extract(".*").IsNull.Should().BeTrue();
+        value.Split("_").IsNull.Should().BeTrue();
+        value.Slice(0).IsNull.Should().BeTrue();
+        value.Slice(0, 1).IsNull.Should().BeTrue();
+        value.Before("_").IsNull.Should().BeTrue();
+        value.After("_").IsNull.Should().BeTrue();
+        value.BeforeLast("_").IsNull.Should().BeTrue();
+        value.AfterLast("_").IsNull.Should().BeTrue();
+        value.PadLeft(5).IsNull.Should().BeTrue();
+        value.Trim().IsNull.Should().BeTrue();
+        value.ToUpper().IsNull.Should().BeTrue();
+        value.ToLower().IsNull.Should().BeTrue();
+    }
+
     #endregion
 
     #region Null Semantics
@@ -672,7 +793,7 @@ public class AttributeValueTests
     public void Null_Inequality_ShouldBeFalse()
     {
         var attribute = AttributeValue.Null;
-        
+
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         (attribute != null).Should().BeFalse();
         (null != attribute).Should().BeFalse();

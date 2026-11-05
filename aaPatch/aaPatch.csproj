@@ -33,4 +33,10 @@
         <PackageReference Include="System.Linq.Dynamic.Core" Version="1.7.3" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Content Include="..\SKILL.md">
+        <Link>SKILL.md</Link>
+      </Content>
+    </ItemGroup>
+
 </Project>
