@@ -53,7 +53,8 @@ aapatch [options]
 | `--where`   | `-w`      | Filter objects using a dynamic expression.                                 |
 | `--has`     | `-c`      | Filter objects that contain the specified attribute(s).                    |
 | `--patch`   | `-p`      | Patch expression to apply to matching objects.                             |
-| `--select`  | `-s`      | Select and transform fields for output.                                    |
+| `--select`  | `-s`      | Select, filter by pattern, and transform fields for output.                |
+| `--prune`   | `-u`      | Include only changed attributes and modified objects in the output.        |
 | `--format`  | `-f`      | Output format: `aveva` (default), `json`, or `csv`.                        |
 
 For detailed syntax rules, run:
@@ -111,11 +112,13 @@ Filter expressions must evaluate to a boolean (`bool`).
 Patches modify matching objects and support both targeted and global modes:
 
 - **Targeted Patch**: `{Attribute} := Expression`
-  Applies the expression strictly to the specified attribute.
+  Applies the expression strictly to the specified attribute. The expression is evaluated in the context of the object, so it can reference any other attribute using `{OtherAttribute}`.
   - Set static value: `-p '{Description} := "Standard Pump"'`
   - Calculation: `-p '{Setpoint} := {Setpoint} * 1.1'`
+  - Cross-field assignment: `-p '{InputSource} := "PLC_" + {TagName} + ".PV"'`
   - Find and replace (case-insensitive): `-p '{Description} := {Description}.Replace("OldText", "NewText")'`
   - Find and replace (case-sensitive): `-p '{TagName} := {TagName}.Replace("p_", "P_", true)'`
+  - Cross-field find and replace: `-p '{InputSource} := {InputSource}.Replace("OLD", {TagName})'`
 
 - **Global Patch**: `Expression`
   Evaluates the expression across all attributes on the object.
@@ -123,9 +126,20 @@ Patches modify matching objects and support both targeted and global modes:
 
 ### Projection (`--select`)
 - **Simple Selection**: `-s TagName`
+- **Pattern Selection**: Use `*` or `%` to match zero or more characters, and `?` to match a single character.
+  - `-s '%InputSource'` (fields ending in `InputSource`)
+  - `-s '%10%InputSource'` (fields containing `10` and ending in `InputSource`)
+  - `-s 'Alarm?'` (fields matching `Alarm` followed by one character)
 - **Aliasing & Transformation**: `Alias := Expression`
   - `-s 'name := {TagName}'`
   - `-s 'display := !{Description}.IsNull ? {Description} : {TagName}'`
+
+When exporting to AVEVA format (`-f aveva`), `Template` and `TagName` are automatically retained and deduplicated even when omitted from `--select`, keeping exports valid for Galaxy re-import.
+
+### Pruning (`--prune` / `-u`)
+Use `--prune` to generate surgical patch artifacts for AVEVA re-import. Column pruning drops unmodified columns while retaining identity fields (`Template`, `TagName`) and changed attributes. Row pruning drops instances where zero attributes were modified.
+
+If `--select` is specified, it strictly dictates the output schema and `--prune` is ignored.
 
 ## Examples
 
@@ -141,25 +155,43 @@ Replace substring in specific attributes:
 aapatch -i Export.csv -p '{TagName} := {TagName}.Replace("OLD_", "NEW_")'
 ```
 
-### 3. Global Find and Replace
+### 3. Targeted Cross-Field Patching
+Use another attribute's value to build a new attribute value:
+```bash
+aapatch -i Export.csv -p '{InputSource} := "PLC_" + {TagName} + ".PV"'
+```
+
+### 4. Surgical Patch Generation
+Generate an output containing only modified objects and attributes:
+```bash
+aapatch -i Export.csv -p '{Description} := {Description}.Replace("OLD_", "NEW_")' --prune -o Patch.csv
+```
+
+### 5. Global Find and Replace
 Replace text across all attributes in the dataset:
 ```bash
 aapatch -i Export.csv -p 'it.Replace("BuildingA", "BuildingB")'
 ```
 
-### 4. Filtering with `IsNull` and Pattern Matching
+### 6. Filtering with `IsNull` and Pattern Matching
 Find pumps with non-null areas matching a pattern and update setpoint:
 ```bash
 aapatch -i Export.csv -w '!{Area}.IsNull && {TagName}.Like("P_10*")' -p '{Setpoint} := {Setpoint} * 1.1'
 ```
 
-### 5. Selection and Format Conversion
+### 7. Wildcard Selection
+Select fields whose names end in `InputSource`:
+```bash
+aapatch -i Export.csv -s '%InputSource' -o Inputs.csv
+```
+
+### 8. Selection and Format Conversion
 Convert AVEVA CSV to formatted JSON with custom projections:
 ```bash
 aapatch -i galaxy.csv -f json -s 'id := {RecordId}' -s TagName -s 'area := {Area}.ToUpper()'
 ```
 
-### 6. Pipelining
+### 9. Pipelining
 Use `aaPatch` in a command-line pipeline:
 ```bash
 cat Export.csv | aapatch -w '{Area} == "Utility"' -s TagName > Tags.txt
