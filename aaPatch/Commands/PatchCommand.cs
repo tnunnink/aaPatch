@@ -14,6 +14,11 @@ namespace aaPatch.Commands;
 [Command(Description = "Patches Galaxy CSV exports by modifying object attributes based provided criteria.")]
 public partial class PatchCommand : ICommand
 {
+    /// <summary>
+    /// Defines the default object identity projection used to identify objects by template and tag name.
+    /// </summary>
+    private static readonly ObjectProjection[] Identity = ["Template", "TagName"];
+
     private const string AdditionInfoMessage = "Use command 'aaPatch info' for format rules.";
 
     /// <summary>
@@ -68,6 +73,14 @@ public partial class PatchCommand : ICommand
     public Format Format { get; set; } = Format.Aveva;
 
     /// <summary>
+    /// Indicates whether patched objects should be pruned to only changed attributes and object instanced after all
+    /// patches have been applied. If selections are provided, then this flag is ignored.
+    /// </summary>
+    [CommandOption("prune", 'u', Description = "Only include changed attributes and modified objects in the output.")]
+    public bool Prune { get; set; }
+
+
+    /// <summary>
     /// Executes the patch command by reading Galaxy dump data, filtering the output objects, applying patches, and writing the result.
     /// </summary>
     /// <param name="console">The console interface for input/output operations and cancellation handling.</param>
@@ -85,11 +98,15 @@ public partial class PatchCommand : ICommand
             var formatter = new FormatRouter();
             var objects = formatter.Read(input).ToList();
 
+            var selections = Format == Format.Aveva && Selections.Count > 0
+                ? Identity.Concat(Selections).DistinctBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToArray()
+                : Selections;
+
             var data = objects
                 .Filter(Filter)
                 .Having(Attributes)
-                .Patch(Patches)
-                .Project(Selections)
+                .Patch(Patches, Prune && Selections.Count == 0)
+                .Project(selections)
                 .ToList();
 
             var content = formatter.Write(data, Format);

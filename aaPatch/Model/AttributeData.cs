@@ -11,6 +11,26 @@
 public class AttributeData
 {
     /// <summary>
+    /// Provides a predefined string comparer that performs case-insensitive string comparisons.
+    /// This comparer is commonly used when string operations need to ignore the case sensitivity
+    /// of characters, such as in dictionary keys or grouping operations.
+    /// </summary>
+    private static readonly StringComparer Comparer = StringComparer.OrdinalIgnoreCase;
+
+    /// <summary>
+    /// Defines the attribute name used to identify template-related attribute data.
+    /// This field is used as a canonical key when determining whether an attribute
+    /// represents template identity information.
+    /// </summary>
+    private const string TemplateField = "Template";
+
+    /// <summary>
+    /// Defines the attribute name used to identify a tag name field.
+    /// This constant is used when determining whether an attribute represents identity-related data.
+    /// </summary>
+    private const string TagNameField = "TagName";
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="AttributeData"/> class with the specified name and value.
     /// </summary>
     /// <param name="name">The name of the attribute. Cannot be null or empty.</param>
@@ -44,20 +64,18 @@ public class AttributeData
     public AttributeValue Value { get; }
 
     /// <summary>
+    /// Gets a value indicating whether this attribute represents an identity-defining field.
+    /// The value is true when the attribute name matches "Template" or "TagName" using a case-insensitive comparison.
+    /// </summary>
+    public bool IsIdentity => Comparer.Equals(Name, TemplateField) || Comparer.Equals(Name, TagNameField);
+
+    /// <summary>
     /// Creates a new <see cref="AttributeData"/> instance with the specified name while preserving the current value.
     /// </summary>
     /// <param name="name">The new name to set for the attribute. Cannot be null or empty.</param>
     /// <returns>A new <see cref="AttributeData"/> instance with the updated name and the existing value.</returns>
     /// <exception cref="ArgumentException">Thrown when the provided name parameter is null or empty.</exception>
     public AttributeData Rename(string name) => new(name, Value);
-
-    /// <summary>
-    /// Creates a duplicate of the current <see cref="AttributeData"/> instance.
-    /// </summary>
-    /// <returns>
-    /// A new <see cref="AttributeData"/> instance with the same name and a deep copy of the value.
-    /// </returns>
-    public AttributeData Duplicate() => new(Name, new AttributeValue(Value));
 
     /// <summary>
     /// Creates a new instance of the <see cref="AttributeData"/> class with the same name and an updated value.

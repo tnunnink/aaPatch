@@ -20,10 +20,10 @@ public sealed record ObjectPatch
     private readonly ObjectExpression _expression;
 
     /// <summary>
-    /// Stores a compiled delegate representing the logic for modifying an attribute's value based on
-    /// the patch expression. If null, the patch expression has not been compiled yet.
+    /// Caches the compiled patch expression delegate so it can be reused across applications of this patch.
+    /// The delegate is created lazily on first use and retained to avoid recompiling the expression for later calls.
     /// </summary>
-    private Func<AttributeValue, object?>? _cached;
+    private Func<ObjectData, object?>? _cached;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ObjectPatch"/> class by parsing a patch expression string.
@@ -55,22 +55,21 @@ public sealed record ObjectPatch
     /// The method evaluates the patch expression and updates the attribute's value
     /// if the target matches or if the patch is global.
     /// </summary>
-    /// <param name="attribute">The attribute data to which the patch is applied.</param>
+    /// <param name="instance">The attribute data to which the patch is applied.</param>
     /// <returns>A new <see cref="AttributeData"/> instance with the updated value or a duplicate
     /// of the original attribute if no update is performed.</returns>
-    public AttributeData Apply(AttributeData attribute)
+    public ObjectData Apply(ObjectData instance)
     {
-        var patch = _cached ??= _expression.Compile<AttributeValue, object?>();
+        var patch = _cached ??= _expression.Compile<ObjectData, object?>();
+        var value = patch.Invoke(instance);
 
-        // Only update if the target is not specified (global patch)
-        // or if the target is specified and matches the provided attribute name.
-        if (_target is null || StringComparer.OrdinalIgnoreCase.Equals(_target, attribute.Name))
-        {
-            var value = patch.Invoke(attribute.Value);
-            return attribute.Update(new AttributeValue(value));
-        }
+        if (value is ObjectData data)
+            return data;
 
-        return attribute.Duplicate();
+        if (_target is not null)
+            return instance.Update(_target, value);
+
+        return instance;
     }
 
     /// <summary>

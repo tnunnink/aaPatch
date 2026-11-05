@@ -1,4 +1,6 @@
-﻿namespace aaPatch.Model;
+﻿using System.Text.RegularExpressions;
+
+namespace aaPatch.Model;
 
 /// <summary>
 /// Represents a field selection expression used to specify which attributes to include in the output.
@@ -8,15 +10,15 @@
 public sealed record ObjectProjection
 {
     /// <summary>
-    /// Gets the name of the attribute to include in the output.
-    /// </summary>
-    private readonly string _name;
-
-    /// <summary>
     /// Gets the parsed expression representing the field or attribute, using curly brace notation
     /// for dynamic property references and supporting transformations to indexer-based syntax.
     /// </summary>
     private readonly ObjectExpression _expression;
+
+    /// <summary>
+    /// Indicates whether the projection name contains wildcard characters and should be treated as a pattern.
+    /// </summary>
+    private readonly bool _isPattern;
 
     /// <summary>
     /// Caches the compiled expression to optimize repeated evaluations of object data projections.
@@ -36,9 +38,18 @@ public sealed record ObjectProjection
             throw new ArgumentException("Selection expression cannot be null, empty, or whitespace.", nameof(input));
 
         var index = input.IndexOf(":=", StringComparison.Ordinal);
-        _name = index > 0 ? input[..index].Trim() : input.Trim();
-        _expression = index > 0 ? input[(index + 2)..].Trim() : $"{{{input.Trim()}}}";
+        var isAlias = index > 0;
+
+        Name = isAlias ? input[..index].Trim() : input.Trim();
+        _expression = isAlias ? input[(index + 2)..].Trim() : $"{{{Name}}}";
+        _isPattern = !isAlias && Name.IndexOfAny(['*', '%', '?']) >= 0;
     }
+
+    /// <summary>
+    /// Gets the projection name used as the output attribute name or as the wildcard
+    /// pattern when the projection selects matching attributes.
+    /// </summary>
+    public string Name { get; }
 
     /// <summary>
     /// Projects data from an <see cref="ObjectData"/> instance into a collection of <see cref="AttributeData"/>
@@ -53,12 +64,12 @@ public sealed record ObjectProjection
     /// </returns>
     public IEnumerable<AttributeData> Project(ObjectData data)
     {
-        if (_name == "*")
-            return data.Select(a => a);
+        if (_isPattern)
+            return data.Where(a => Like(a.Name, Name));
 
         var selection = _cached ??= _expression.Compile<ObjectData, object?>();
         var value = selection(data);
-        return [new AttributeData(_name, value)];
+        return [new AttributeData(Name, value)];
     }
 
     /// <summary>
@@ -71,4 +82,27 @@ public sealed record ObjectProjection
     /// A new <see cref="ObjectProjection"/> instance based on the provided selection expression.
     /// </returns>
     public static implicit operator ObjectProjection(string text) => new(text);
+
+    /// <summary>
+    /// Determines whether the specified text matches a wildcard pattern using case-insensitive comparison.
+    /// </summary>
+    /// <param name="text">
+    /// The text to compare against the wildcard pattern.
+    /// </param>
+    /// <param name="pattern">
+    /// The wildcard pattern to match, where "*" and "%" match any sequence of characters, and "?" and "_" match any single character.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> if the text matches the pattern; otherwise, <see langword="false"/>.
+    /// </returns>
+    private static bool Like(string text, string pattern)
+    {
+        var regex = "^" + Regex.Escape(pattern)
+            .Replace(@"\*", ".*")
+            .Replace("%", ".*")
+            .Replace(@"\?", ".")
+            .Replace("_", ".") + "$";
+
+        return Regex.IsMatch(text, regex, RegexOptions.IgnoreCase);
+    }
 }

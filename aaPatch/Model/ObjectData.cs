@@ -1,7 +1,5 @@
 using System.Collections;
 using System.Linq.Dynamic.Core.CustomTypeProviders;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace aaPatch.Model;
 
@@ -35,43 +33,19 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     }
 
     /// <summary>
-    /// A unique identifier that represents the specific instance of the exported object data.
-    /// This property generates a new globally unique identifier (GUID) to ensure object-level
-    /// uniqueness, which can be useful for distinguishing records in a system or tracking.
-    /// </summary>
-    public Guid RecordId { get; } = Guid.NewGuid();
-
-    /// <summary>
-    /// 
-    /// </summary>
-    public string SchemaId => field ??= GetSchemaHash();
-
-    /// <summary>
-    /// Computes a unique hash for the schema based on the current set of attribute headers.
-    /// This hash is generated using the SHA-256 algorithm applied to a comma-separated,
-    /// case-insensitive list of attribute names and returned as a Base64-encoded string.
-    /// </summary>
-    /// <returns>
-    /// A Base64-encoded string representing the SHA-256 hash of the schema's attribute headers.
-    /// </returns>
-    private string GetSchemaHash()
-    {
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-
-        foreach (var name in _attributes.Keys)
-        {
-            var normalized = Encoding.UTF8.GetBytes(name.ToUpperInvariant());
-            hash.AppendData(BitConverter.GetBytes(normalized.Length));
-            hash.AppendData(normalized);
-        }
-
-        return Convert.ToHexString(hash.GetHashAndReset());
-    }
-
-    /// <summary>
     /// Gets the total number of attributes associated with the object.
     /// </summary>
     public int Count => _attributes.Count;
+
+    /// <summary>
+    /// Gets the name of the parent template associated with this exported object instance.
+    /// </summary>
+    public AttributeValue Template => this[nameof(Template)];
+
+    /// <summary>
+    /// Gets the tag name associated with the exported object instance.
+    /// </summary>
+    public AttributeValue TagName => this[nameof(TagName)];
 
     /// <summary>
     /// Retrieves the value of an attribute by its name in the context of the current object.
@@ -80,7 +54,7 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     /// <param name="name">The name of the attribute to retrieve.</param>
     /// <returns>The value of the attribute as an <see cref="AttributeValue"/> object.</returns>
     /// <exception cref="ArgumentException">Thrown when multiple attributes match the specified name.</exception>
-    public AttributeValue this[string name] => ResolveAttribute(name);
+    public AttributeValue this[string name] => ResolveAttribute(name)?.Value ?? AttributeValue.Null;
 
     /// <summary>
     /// Checks if the object contains all specified attributes.
@@ -99,6 +73,81 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Creates a new object data instance with the specified attribute value updated. If no matching attribute exists,
+    /// a new attribute with the specified name and value is added.
+    /// </summary>
+    /// <param name="name">The name of the attribute to update or add.</param>
+    /// <param name="value">The value to assign to the attribute.</param>
+    /// <returns>A new object data instance containing the updated or added attribute.</returns>
+    public ObjectData Update(string name, object? value)
+    {
+        var matched = false;
+        var attributes = new List<AttributeData>(_attributes.Count + 1);
+
+        foreach (var attribute in _attributes.Values)
+        {
+            if (IsMatch(attribute, name))
+            {
+                attributes.Add(attribute.Update(new AttributeValue(value)));
+                matched = true;
+            }
+            else
+            {
+                attributes.Add(attribute);
+            }
+        }
+
+        if (!matched)
+        {
+            attributes.Add(new AttributeData(name, value));
+        }
+
+        return new ObjectData(attributes);
+    }
+
+    /// <summary>
+    /// Creates a new object data instance with the specified text replaced across all attribute values.
+    /// </summary>
+    /// <param name="find">The text to search for in each attribute value.</param>
+    /// <param name="replace">The text to substitute for each matching occurrence.</param>
+    /// <param name="matchCase">A value indicating whether the search should be case-sensitive.</param>
+    /// <returns>A new object data instance containing the updated attribute values.</returns>
+    public ObjectData Replace(string find, string replace, bool matchCase = false)
+    {
+        var attributes = _attributes.Values.Select(a =>
+        {
+            var updated = a.Value.Replace(find, replace, matchCase);
+            return a.Update(updated);
+        });
+
+        return new ObjectData(attributes);
+    }
+
+    /// <summary>
+    /// Creates a new object containing the identity attributes from the supplied object and any attributes whose values differ
+    /// from this object.
+    /// </summary>
+    /// <param name="other">The object to compare against this object.</param>
+    /// <returns>A new object containing the differing attributes from <paramref name="other" /> and its identity attributes.</returns>
+    public ObjectData Diff(ObjectData other)
+    {
+        var attributes = other.Where(a => a.IsIdentity || !this[a.Name].Equals(a.Value));
+        return new ObjectData(attributes);
+    }
+
+    /// <summary>
+    /// Determines whether any non-identity attribute in the specified object has a value that differs from the corresponding
+    /// attribute in this object.
+    /// </summary>
+    /// <param name="other">The object data to compare against this object.</param>
+    /// <returns>True if at least one non-identity attribute has changed; otherwise, false.</returns>
+    public bool HasChanges(ObjectData other)
+    {
+        // Has any non-identity attribute changed?
+        return other.Any(a => !a.IsIdentity && !this[a.Name].Equals(a.Value));
     }
 
     /// <summary>
@@ -141,17 +190,36 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
     }
 
     /// <summary>
+    /// Determines whether an attribute name matches the requested name, using a case-insensitive exact comparison or a
+    /// case-insensitive prefix comparison for names that include type metadata in parentheses.
+    /// </summary>
+    /// <param name="attribute">The attribute to compare against the requested name.</param>
+    /// <param name="name">The attribute name to match.</param>
+    /// <returns>True if the attribute name matches exactly or begins with the requested name followed by an opening parenthesis; otherwise, false.</returns>
+    private static bool IsMatch(AttributeData attribute, string name)
+    {
+        // Explicit match to the attribute name passes first
+        if (Comparer.Equals(attribute.Name, name))
+            return true;
+
+        // Otherwise, help the user and try to find the name starting with the provided text.
+        // This is designed to help with accessing AVEVA columns that have type metadata (e.g., MyColumn(MxInteger))
+        var prefix = $"{name}(";
+        return attribute.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// Resolves the value of an attribute by its name. If an exact match is not found, attempts to find an attribute
     /// whose name starts with the specified text. Throws an exception if multiple matches are found.
     /// </summary>
     /// <param name="name">The name of the attribute to resolve. This can be either the full attribute name or the prefix.</param>
     /// <returns>The resolved <see cref="AttributeValue"/>. Returns <see cref="AttributeValue.Null"/> if no match is found.</returns>
     /// <exception cref="ArgumentException">Thrown when multiple attributes match the specified name.</exception>
-    private AttributeValue ResolveAttribute(string name)
+    private AttributeData? ResolveAttribute(string name)
     {
         // Explicit match to the attribute name wins first
         if (_attributes.TryGetValue(name, out var matched))
-            return matched.Value;
+            return matched;
 
         // Otherwise, help the user and try to find the name starting with the provided text.
         // This is designed to help with accessing AVEVA columns that have type metadata (e.g., MyColumn(MxInteger))
@@ -162,8 +230,8 @@ public class ObjectData : IReadOnlyCollection<AttributeData>
         {
             > 1 => throw new ArgumentException(
                 $"Ambiguous attribute name '{name}'. Multiple attributes match: {string.Join(", ", matches)}. Please specify the full attribute name including type suffix."),
-            1 => _attributes[matches[0]].Value,
-            _ => AttributeValue.Null
+            1 => _attributes[matches[0]],
+            _ => null
         };
     }
 }

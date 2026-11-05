@@ -29,9 +29,7 @@ public static class ObjectExtensions
         public IEnumerable<ObjectData> Filter(ObjectExpression? expression)
         {
             if (expression is null)
-            {
                 return data;
-            }
 
             var predicate = expression.Compile<ObjectData, bool>();
             return data.Where(predicate);
@@ -64,24 +62,33 @@ public static class ObjectExtensions
         /// A collection of ObjectPatch instances representing the changes to be applied to the attributes
         /// of the ObjectData objects.
         /// </param>
+        /// <param name="prune">
+        /// When <see langword="true"/>, only objects with modified attributes are returned, and each returned
+        /// object is pruned to contain only its identity attributes and the attributes that were changed.
+        /// When <see langword="false"/>, all objects and their attributes are preserved.
+        /// </param>
         /// <returns>
         /// Returns an IEnumerable of ObjectData with the applied patches. Each ObjectData in the result is updated
         /// according to the rules specified by the provided patches.
         /// </returns>
-        public IEnumerable<ObjectData> Patch(IReadOnlyCollection<ObjectPatch> patches)
+        public IEnumerable<ObjectData> Patch(IReadOnlyCollection<ObjectPatch> patches, bool prune = false)
         {
-            if (patches.Count == 0)
-                return data;
-
-            var results = new List<ObjectData>();
-
             foreach (var item in data)
             {
-                var attributes = item.Select(x => patches.Aggregate(x, (a, p) => p.Apply(a)));
-                results.Add(new ObjectData(attributes));
-            }
+                var patched = patches.Aggregate(item, (i, p) => p.Apply(i));
 
-            return results;
+                // With prune, we will only return changed attribute columns and change object rows.
+                // Otherwise, return the entire patched instance
+                switch (prune)
+                {
+                    case false:
+                        yield return patched;
+                        break;
+                    case true when item.HasChanges(patched):
+                        yield return item.Diff(patched);
+                        break;
+                }
+            }
         }
 
         /// <summary>

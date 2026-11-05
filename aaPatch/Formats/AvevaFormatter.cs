@@ -27,16 +27,6 @@ public class AvevaFormatter : IObjectFormater
     private const string TagNameKey = ":Tagname";
 
     /// <summary>
-    /// Represents the identifier used to denote the tag name attribute within the Aveva object template.
-    /// </summary>
-    private const string TemplateId = "Template";
-
-    /// <summary>
-    /// Represents the identifier used to denote the tag name attribute within the Aveva object template.
-    /// </summary>
-    private const string TagNameId = "TagName";
-
-    /// <summary>
     /// Defines a regular expression used to separate object data segments by templates within a text structure.
     /// This separator identifies segments starting with the predefined template key and processes them in a case-insensitive, multiline context.
     /// </summary>
@@ -73,7 +63,7 @@ public class AvevaFormatter : IObjectFormater
 
         IEnumerable<ObjectData> ReadTemplate(string segment)
         {
-            // We know that each segment needs at least 3 lines (template identifier, attribute header, and instance(s) row)
+            // We know that each segment needs at least 3 lines (template identifier, attribute headers, and instance(s) row)
             var lines = segment.Split(["\r\n", "\n"], StringSplitOptions.None);
 
             switch (lines.Length)
@@ -103,13 +93,15 @@ public class AvevaFormatter : IObjectFormater
 
             foreach (var record in records)
             {
+                var tagName = record[TagNameKey]?.ToString();
+
                 // Manually inject normalized template and tag name attributes into the object data.
                 // This way we don't have to use special colon syntax to reference these values.
                 // The write method will restructure the output according to AVEVA format.
                 var attributes = new Dictionary<string, AttributeData>
                 {
-                    [TemplateId] = new(TemplateId, template),
-                    [TagNameId] = new(TagNameId, record[TagNameKey]?.ToString())
+                    [nameof(ObjectData.Template)] = new(nameof(ObjectData.Template), template),
+                    [nameof(ObjectData.TagName)] = new(nameof(ObjectData.TagName), tagName)
                 };
 
                 foreach (var item in record)
@@ -150,17 +142,17 @@ public class AvevaFormatter : IObjectFormater
 
         foreach (var instance in collection)
         {
-            if (instance[TemplateId].IsNull || string.IsNullOrWhiteSpace(instance[TemplateId].ToString()))
+            if (instance.Template.IsNull)
                 throw new InvalidOperationException(
-                    $"Cannot write AVEVA format: Object is missing required '{TemplateId}'.");
+                    $"Cannot write AVEVA format: Object is missing required field '{nameof(ObjectData.Template)}'.");
 
-            if (instance[TagNameId].IsNull || string.IsNullOrWhiteSpace(instance[TagNameId].ToString()))
+            if (instance.TagName.IsNull)
                 throw new InvalidOperationException(
-                    $"Cannot write AVEVA format: Object is missing required '{TagNameId}'.");
+                    $"Cannot write AVEVA format: Object is missing required field '{nameof(ObjectData.TagName)}'.");
         }
 
         // Need to group output by template for system to import correctly
-        var groups = collection.GroupBy(x => x[TemplateId].ToString(), StringComparer.OrdinalIgnoreCase);
+        var groups = collection.GroupBy(x => x.Template.ToString(), StringComparer.OrdinalIgnoreCase);
 
         foreach (var group in groups)
         {
@@ -169,7 +161,7 @@ public class AvevaFormatter : IObjectFormater
 
             // Aggregate remaining headers across all instances in this template group
             var headers = group
-                .SelectMany(instance => instance.Where(a => !IsIdentity(a)).Select(a => a.Name))
+                .SelectMany(instance => instance.Where(a => !a.IsIdentity).Select(a => a.Name))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -182,7 +174,7 @@ public class AvevaFormatter : IObjectFormater
             foreach (var instance in group)
             {
                 // Explicitly write the tag name as the first attribute since it not part of the headers collection.
-                csv.WriteField(instance[TagNameId].ToString());
+                csv.WriteField(instance.TagName.ToString());
 
                 foreach (var header in headers)
                     csv.WriteField(instance[header].ToString());
@@ -246,18 +238,4 @@ public class AvevaFormatter : IObjectFormater
             _ => typeof(string)
         };
     }
-
-    /// <summary>
-    /// Determines whether an attribute is considered an identity attribute,
-    /// based on its name being "TagName" or "Template".
-    /// </summary>
-    /// <param name="attribute">
-    /// The attribute to evaluate. The attribute is an instance of <see cref="AttributeData"/>
-    /// containing a name and optional value.
-    /// </param>
-    /// <returns>
-    /// A boolean value indicating whether the specified attribute is an identity attribute.
-    /// Returns true if the attribute name is "TagName" or "Template"; otherwise, false.
-    /// </returns>
-    private static bool IsIdentity(AttributeData attribute) => attribute.Name is TagNameId or TemplateId;
 }
