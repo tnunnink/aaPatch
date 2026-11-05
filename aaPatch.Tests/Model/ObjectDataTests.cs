@@ -23,8 +23,8 @@ public class ObjectDataTests
 
         data["Template"].Should().Be("$Pump");
         data["TagName"].Should().Be("P_101");
-        data.Select(a => a.Name).Should().Contain("Description");
-        data.Select(a => a.Value).Should().Contain("Centrifugal Pump");
+        data.Attributes.Select(a => a.Name).Should().Contain("Description");
+        data.Attributes.Select(a => a.Value).Should().Contain("Centrifugal Pump");
     }
 
     [Test]
@@ -104,15 +104,6 @@ public class ObjectDataTests
 
         // ReSharper disable once StringLiteralTypo
         data["somefield"].Should().Be("Value");
-    }
-
-    [Test]
-    public void GetEnumerator_IteratesOverAllAttributes()
-    {
-        var attributes = CreateDefaultAttributes();
-        var data = new ObjectData(attributes);
-
-        data.Should().BeEquivalentTo(attributes);
     }
 
     [Test]

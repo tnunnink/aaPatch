@@ -1,3 +1,4 @@
+using aaPatch.Extensions;
 using aaPatch.Model;
 using FluentAssertions;
 
@@ -56,6 +57,100 @@ public class ObjectProjectionTests
         var result = projection.Project(data).ToList();
 
         result.Should().BeEquivalentTo(attributes);
+    }
+
+    [Test]
+    [TestCase("*InputSource")]
+    [TestCase("%InputSource")]
+    public void Project_WildcardSuffix_ShouldMatchCaseInsensitively(string pattern)
+    {
+        var projection = new ObjectProjection(pattern);
+        var data = new ObjectData(
+        [
+            new AttributeData("InputSource", "Direct"),
+            new AttributeData("PlantInputSource", "Plant"),
+            new AttributeData("Description", "Other")
+        ]);
+
+        var result = projection.Project(data).ToList();
+
+        result.Select(a => a.Name).Should().BeEquivalentTo("InputSource", "PlantInputSource");
+    }
+
+    [Test]
+    [TestCase("%10%")]
+    [TestCase("*10*")]
+    public void Project_InfixWildcard_ShouldMatch(string pattern)
+    {
+        var projection = new ObjectProjection(pattern);
+        var data = new ObjectData(
+        [
+            new AttributeData("Plant10InputSource", "Match"),
+            new AttributeData("Plant11InputSource", "No match")
+        ]);
+
+        var result = projection.Project(data).ToList();
+
+        result.Should().ContainSingle().Which.Name.Should().Be("Plant10InputSource");
+    }
+
+    [Test]
+    public void Project_OverlappingSelections_ShouldDeduplicateAttributes()
+    {
+        var data = new ObjectData(
+        [
+            new AttributeData("TagName", "P_101"),
+            new AttributeData("Description", "Pump")
+        ]);
+        ObjectProjection[] projections = ["TagName", "*"];
+
+        var result = new[] { data }.Project(projections).Single();
+
+        result.Attributes.Should().HaveCount(2);
+        result.Attributes.Should().ContainSingle(a => a.Name.Equals("TagName", StringComparison.OrdinalIgnoreCase))
+            .Which.Value.Should().Be("P_101");
+        result.Attributes.Select(a => a.Name).Should().BeEquivalentTo("TagName", "Description");
+    }
+
+    [Test]
+    public void Project_SingleCharacterWildcard_ShouldNotMatchMultipleCharacters()
+    {
+        var projection = new ObjectProjection("Alarm?");
+        var data = new ObjectData(
+        [
+            new AttributeData("Alarm1", "Match"),
+            new AttributeData("Alarm12", "No match")
+        ]);
+
+        var result = projection.Project(data).ToList();
+
+        result.Should().ContainSingle().Which.Name.Should().Be("Alarm1");
+    }
+
+    [Test]
+    public void Project_WildcardWithRegexMetacharacter_ShouldEscapeAttributeName()
+    {
+        var projection = new ObjectProjection("Valve.PV*");
+        var data = new ObjectData(
+        [
+            new AttributeData("Valve.PV_101", "Match"),
+            new AttributeData("ValveXPV_101", "No match")
+        ]);
+
+        var result = projection.Project(data).ToList();
+
+        result.Should().ContainSingle().Which.Name.Should().Be("Valve.PV_101");
+    }
+
+    [Test]
+    public void Project_NonMatchingWildcard_ShouldReturnEmpty()
+    {
+        var projection = new ObjectProjection("Missing*");
+        var data = new ObjectData([new AttributeData("Description", "Value")]);
+
+        var result = projection.Project(data);
+
+        result.Should().BeEmpty();
     }
 
     [Test]

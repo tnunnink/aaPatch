@@ -46,12 +46,31 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Patches = ["{Description} := it.Replace(\"Pump\",\"Motor\")"]
+            Patches = ["{Description} := {Description}.Replace(\"Pump\",\"Motor\")"]
         };
 
         await command.ExecuteAsync(console);
 
         await Verify(console.ReadOutputString());
+    }
+
+    [Test]
+    public async Task ExecuteAsync_CrossFieldPatch_UsesTagNameInDescription()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Patches = ["{Description} := \"PLC_\" + {TagName} + \".\" + {Description}"],
+            Format = Format.Csv
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain("PLC_P_101.Centrifugal Pump"));
+        Assert.That(output, Does.Contain("PLC_V_201.Gate Valve"));
     }
 
     [Test]
@@ -225,7 +244,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Patches = ["{Description} := it.Replace(\"PUMP\", \"Motor\")"]
+            Patches = ["{Description} := {Description}.Replace(\"PUMP\", \"Motor\")"]
         };
 
         await command.ExecuteAsync(console);
@@ -242,7 +261,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Patches = ["{Description} := it.Replace(\"PUMP\", \"Motor\", true)"]
+            Patches = ["{Description} := {Description}.Replace(\"PUMP\", \"Motor\", true)"]
         };
 
         await command.ExecuteAsync(console);
@@ -259,7 +278,7 @@ public class PatchCommandTests
 
         var command = new PatchCommand
         {
-            Patches = ["{Description} := it.Replace(\"Pump\", \"Motor\", true)"]
+            Patches = ["{Description} := {Description}.Replace(\"Pump\", \"Motor\", true)"]
         };
 
         await command.ExecuteAsync(console);
@@ -344,6 +363,27 @@ public class PatchCommandTests
     }
 
     [Test]
+    public async Task ExecuteAsync_AvevaWildcardSelection_RetainsIdentityAttributes()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(
+            ":TEMPLATE=$Pump\n:Tagname,Plant10InputSource,Description\nP_101,PLC_P_101.PV,Pump\n");
+
+        var command = new PatchCommand
+        {
+            Selections = ["%10%InputSource"],
+            Format = Format.Aveva
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain(":TEMPLATE=$Pump"));
+        Assert.That(output, Does.Contain(":Tagname,Plant10InputSource"));
+        Assert.That(output, Does.Not.Contain("Description"));
+    }
+
+    [Test]
     public async Task ExecuteAsync_WithAliasedSelections_RenamesAttributes()
     {
         using var console = new FakeInMemoryConsole();
@@ -396,17 +436,17 @@ public class PatchCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_WithoutIdentitySelections_ThrowsExceptionForMissingTemplateOrTagName()
+    public async Task ExecuteAsync_WithoutIdentitySelections_AutoAddsIdentityAttributes()
     {
-        var act = async () =>
-        {
-            using var console = new FakeInMemoryConsole();
-            console.WriteInput(SimpleGalaxyDump);
-            var command = new PatchCommand { Selections = ["Description"] };
-            await command.ExecuteAsync(console);
-        };
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+        var command = new PatchCommand { Selections = ["Description"] };
 
-        await act.Should().ThrowAsync<CommandException>();
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain(":TEMPLATE=$Pump"));
+        Assert.That(output, Does.Contain(":Tagname,Description"));
     }
 
     [Test]
@@ -428,6 +468,110 @@ public class PatchCommandTests
         Assert.That(output, Does.Not.Contain(":TEMPLATE=$Valve"));
         Assert.That(output, Does.Contain(":Tagname,HiHi"));
         Assert.That(output, Does.Not.Contain("Description"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_PruneChangedValues_DropsUnmodifiedAttributes()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Patches = ["{Description} := \"Updated\""],
+            Prune = true
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain(":Tagname,Description"));
+        Assert.That(output, Does.Not.Contain("HiHi"));
+        Assert.That(output, Does.Not.Contain("OpenLimit"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_PruneUnchangedInstances_OmitsRows()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Patches = ["{Description} := {Description}.Replace(\"Pump\", \"Motor\")"],
+            Prune = true
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain("P_101"));
+        Assert.That(output, Does.Not.Contain("V_201"));
+        Assert.That(output, Does.Not.Contain("HiHi"));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_PruneNoOpPatch_ProducesEmptyOutput()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Patches = ["{Description} := {Description}"],
+            Prune = true,
+            Format = Format.Json
+        };
+
+        await command.ExecuteAsync(console);
+
+        console.ReadOutputString().Should().Be("[]");
+    }
+
+    [Test]
+    public async Task ExecuteAsync_PruneWithSelections_UsesSelectedColumns()
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+
+        var command = new PatchCommand
+        {
+            Patches = ["{Description} := \"Updated\""],
+            Selections = ["Description"],
+            Prune = true,
+            Format = Format.Csv
+        };
+
+        await command.ExecuteAsync(console);
+
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain("Description"));
+        Assert.That(output, Does.Not.Contain("Template"));
+        Assert.That(output, Does.Not.Contain("TagName"));
+        Assert.That(output, Does.Not.Contain("HiHi"));
+    }
+
+    [TestCase("--prune")]
+    [TestCase("-u")]
+    public async Task ExecuteAsync_CliPruneOption_PrunesOutput(string pruneOption)
+    {
+        using var console = new FakeInMemoryConsole();
+        console.WriteInput(SimpleGalaxyDump);
+        const string patch = "{Description} := {Description}.Replace(\"Pump\", \"Motor\")";
+        var application = new CommandLineApplicationBuilder()
+            .AddCommand(PatchCommand.Descriptor)
+            .UseConsole(console)
+            .Build();
+
+        var exitCode = await application.RunAsync(
+            [pruneOption, "--patch", patch],
+            new Dictionary<string, string>());
+
+        Assert.That(exitCode, Is.Zero);
+        var output = console.ReadOutputString();
+        Assert.That(output, Does.Contain("P_101"));
+        Assert.That(output, Does.Not.Contain("V_201"));
+        Assert.That(output, Does.Not.Contain("HiHi"));
     }
 
     [Test]
