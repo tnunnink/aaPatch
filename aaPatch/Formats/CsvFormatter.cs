@@ -23,7 +23,7 @@ public class CsvFormatter : IObjectFormater
         using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
             Mode = CsvMode.RFC4180,
-            TrimOptions = TrimOptions.Trim
+            TrimOptions = TrimOptions.Trim,
         });
 
         var records = csv.GetRecords<dynamic>().Cast<IDictionary<string, object?>>().ToArray();
@@ -33,7 +33,11 @@ public class CsvFormatter : IObjectFormater
         // It might not matter either. Kind of on the user to provide valid CSV data.
         foreach (var record in records)
         {
-            yield return new ObjectData(record.Select(r => new AttributeData(r.Key, r.Value)));
+            var attributes = record
+                .Where(r => !string.IsNullOrWhiteSpace(r.Key))
+                .Select(r => new AttributeData(r.Key, r.Value));
+
+            yield return new ObjectData(attributes);
         }
     }
 

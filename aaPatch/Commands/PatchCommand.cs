@@ -58,6 +58,14 @@ public partial class PatchCommand : ICommand
     public IReadOnlyList<ObjectProjection> Selections { get; set; } = [];
 
     /// <summary>
+    /// 
+    /// </summary>
+    [CommandOption("distinct", 'd',
+        Description =
+            "Collapse duplicate objects in output across all attributes, or by specific attributes if provided.")]
+    public IReadOnlyList<string>? Distinct { get; set; }
+
+    /// <summary>
     /// Gets or sets a collection of attribute-based filters applied to objects in the Galaxy CSV.
     /// Filters specify criteria for selecting objects that contain specific attributes.
     /// </summary>
@@ -99,7 +107,7 @@ public partial class PatchCommand : ICommand
             var objects = formatter.Read(input).ToList();
 
             var selections = Format == Format.Aveva && Selections.Count > 0
-                ? Identity.Concat(Selections).DistinctBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToArray()
+                ? Selections.Concat(Identity).DistinctBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToArray()
                 : Selections;
 
             var data = objects
@@ -107,6 +115,7 @@ public partial class PatchCommand : ICommand
                 .Having(Attributes)
                 .Patch(Patches, Prune && Selections.Count == 0)
                 .Project(selections)
+                .Unique(Distinct)
                 .ToList();
 
             var content = formatter.Write(data, Format);

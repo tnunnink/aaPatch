@@ -115,8 +115,55 @@ public static class ObjectExtensions
                 var attributes = projections
                     .SelectMany(p => p.Project(item))
                     .DistinctBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
-                
+
                 results.Add(new ObjectData(attributes));
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Removes duplicate ObjectData entries from the collection using the specified attribute keys or all attributes.
+        /// </summary>
+        /// <param name="keys">
+        /// The attribute names used to determine uniqueness.
+        /// When null, the original collection is returned without applying distinct filtering.
+        /// When empty, uniqueness is determined from all attributes on each object.
+        /// </param>
+        /// <returns>
+        /// Returns an IEnumerable of ObjectData containing the first occurrence of each distinct item.
+        /// </returns>
+        public IEnumerable<ObjectData> Unique(IReadOnlyCollection<string>? keys)
+        {
+            if (keys is null) return data;
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var results = new List<ObjectData>();
+
+            foreach (var item in data)
+            {
+                string key;
+
+                if (keys.Count > 0)
+                {
+                    foreach (var k in keys)
+                    {
+                        if (!item.Has([k]))
+                            throw new InvalidOperationException(
+                                $"Cannot distinct by attribute '{k}': attribute does not exist on object.");
+                    }
+
+                    key = string.Join(";", keys.Select(k => $"{k}={item[k]}"));
+                }
+                else
+                {
+                    key = string.Join(";", item.Attributes
+                        .OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
+                        .Select(a => $"{a.Name}={a.Value}"));
+                }
+
+                if (seen.Add(key))
+                    results.Add(item);
             }
 
             return results;

@@ -35,6 +35,17 @@ public partial class ObjectExpression
     private static partial Regex ReferencePattern();
 
     /// <summary>
+    /// Gets a regular expression pattern that matches single-quoted string literals.
+    /// </summary>
+    /// <returns>A <see cref="Regex"/> instance that matches single-quoted strings and captures their contents.</returns>
+    /// <remarks>
+    /// The pattern treats two consecutive single quotes within a literal as an escaped single quote.
+    /// The captured group contains the string content without the surrounding single quotes.
+    /// </remarks>
+    [GeneratedRegex("'((?:''|[^'])*)'")]
+    private static partial Regex StringQuotePattern();
+
+    /// <summary>
     /// Stores the original expression string containing property references in curly brace notation.
     /// </summary>
     private readonly string _expression;
@@ -63,7 +74,8 @@ public partial class ObjectExpression
     /// <exception cref="ArgumentException">Thrown when the expression cannot be compiled due to invalid syntax or type incompatibility.</exception>
     public Func<TValue, TResult> Compile<TValue, TResult>()
     {
-        var expression = ReferencePattern().Replace(_expression, "it[\"$1\"]");
+        var normalized = NormalizeStringLiterals(_expression);
+        var expression = ReferencePattern().Replace(normalized, "it[\"$1\"]");
 
         try
         {
@@ -96,4 +108,24 @@ public partial class ObjectExpression
     /// <returns>An <see cref="ObjectExpression"/> instance created from the provided string.</returns>
     /// <exception cref="ArgumentException">Thrown when the input string is null, empty, or whitespace.</exception>
     public static implicit operator ObjectExpression(string text) => new(text);
+
+    /// <summary>
+    /// Converts single-quoted string literals in the specified expression to double-quoted string literals.
+    /// </summary>
+    /// <param name="expression">The expression containing single-quoted string literals to normalize.</param>
+    /// <returns>The expression with single-quoted string literals converted to double-quoted string literals.</returns>
+    /// <remarks>
+    /// Escaped single quotes represented by two consecutive single quote characters are converted to a single quote character.
+    /// Double quote characters within string literal content are escaped in the normalized result.
+    /// </remarks>
+    private static string NormalizeStringLiterals(string expression)
+    {
+        // Match single-quoted strings: 'text' (with '' as escaped quote)
+        // and convert to "text" (escaping internal double quotes as needed).
+        return StringQuotePattern().Replace(expression, match =>
+        {
+            var content = match.Groups[1].Value.Replace("''", "'").Replace("\"", "\\\"");
+            return $"\"{content}\"";
+        });
+    }
 }
