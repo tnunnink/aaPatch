@@ -713,4 +713,76 @@ public class PatchCommandTests
 
         await Verify(console.ReadOutputString());
     }
+    
+    [Test]
+        public async Task ExecuteAsync_FilterByHasAttribute_OnlyEmitsObjectsContainingAttribute()
+        {
+            using var console = new FakeInMemoryConsole();
+            console.WriteInput(SimpleGalaxyDump);
+
+            var command = new PatchCommand
+            {
+                Attributes = ["HiHi"]
+            };
+
+            await command.ExecuteAsync(console);
+
+            var output = console.ReadOutputString();
+            Assert.That(output, Does.Contain("P_101"));
+            Assert.That(output, Does.Not.Contain("V_201"));
+        }
+
+        [Test]
+        public async Task ExecuteAsync_DistinctFlag_CollapsesIdenticalObjects()
+        {
+            const string duplicateDump =
+                """
+                :TEMPLATE=$Pump
+                :Tagname,Description,HiHi
+                P_101,Centrifugal Pump,100.0
+                P_101,Centrifugal Pump,100.0
+                """;
+
+            using var console = new FakeInMemoryConsole();
+            console.WriteInput(duplicateDump);
+
+            var command = new PatchCommand
+            {
+                Distinct = []
+            };
+
+            await command.ExecuteAsync(console);
+
+            var output = console.ReadOutputString();
+            var matches = System.Text.RegularExpressions.Regex.Matches(output, "P_101");
+            Assert.That(matches, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public async Task ExecuteAsync_DistinctByAttribute_CollapsesObjectsMatchingKey()
+        {
+            const string duplicateTagDump =
+                """
+                :TEMPLATE=$Pump
+                :Tagname,Description
+                P_101,Centrifugal Pump Rev1
+                P_101,Centrifugal Pump Rev2
+                V_201,Gate Valve
+                """;
+
+            using var console = new FakeInMemoryConsole();
+            console.WriteInput(duplicateTagDump);
+
+            var command = new PatchCommand
+            {
+                Distinct = ["TagName"]
+            };
+
+            await command.ExecuteAsync(console);
+
+            var output = console.ReadOutputString();
+            Assert.That(output, Does.Contain("P_101,Centrifugal Pump Rev1"));
+            Assert.That(output, Does.Not.Contain("P_101,Centrifugal Pump Rev2"));
+            Assert.That(output, Does.Contain("V_201,Gate Valve"));
+        }
 }

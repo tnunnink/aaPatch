@@ -1,59 +1,56 @@
-﻿using CliFx;
+﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
+using CliFx;
 using CliFx.Binding;
 using CliFx.Infrastructure;
 
 namespace aaPatch.Commands;
 
-[Command("info", Description = "Displays information on how to use the patch syntax.")]
+[Command("info", Description = "Opens the aaPatch documentation in the default browser.")]
 public partial class InfoCommand : ICommand
 {
+    private const string DocumentationUrl = "https://github.com/tnunnink/aaPatch#readme";
+
+    /// <inheritdoc />
     public ValueTask ExecuteAsync(IConsole console)
     {
-        const string infoText =
-            """
-            aaPatch Syntax Information
-            ==========================
+        console.Output.WriteLine($"Opening documentation at {DocumentationUrl}...");
 
-            The patch command supports three primary modes of operation:
+        try
+        {
+            OpenUrl(DocumentationUrl);
+        }
+        catch
+        {
+            // Fall back gracefully if no browser or display is available
+            console.Output.WriteLine($"Unable to open browser. Please visit: {DocumentationUrl}");
+        }
 
-            1. Direct Assignment
-               Format: Attribute=Value
-               Example: -p "Description=New Description"
-               Sets the specified attribute to the given value.
-
-            2. Attribute-Specific Find and Replace
-               Format: Attribute:Find=Replace
-               Example: -p "TagName:Old=New"
-               Searches for 'Old' within the 'TagName' attribute and replaces it with 'New'.
-
-            3. Global Find and Replace
-               Format: :Find=Replace
-               Example: -p ":Area1=Area2"
-               Searches for 'Area1' across ALL attributes and replaces it with 'Area2'.
-
-            Case Sensitivity:
-            -----------------
-            By default, find and replace operations are CASE-INSENSITIVE.
-            Use --match-case or -m to perform case-sensitive matching.
-
-            Filtering:
-            ----------
-            Use -f or --filter to select which objects are included in the output.
-            Format: [Attribute=]Pattern
-            Example: -f "Pump*" (Matches TagName starting with Pump)
-            Example: -f "Template=$Pump" (Matches objects where Template is $Pump)
-            Example: -f "Area=Area1" (Matches objects where Area is Area1)
-
-            Static Output Fields:
-            ---------------------
-            Use -a or --add to append static fields to every filtered output object.
-            Format: Attribute=Value
-            Example: -a "source=AVEVA" -a "enabled=true"
-            Added fields are available for selection and aliasing.
-            Primitive types (boolean, number, null) are preserved in JSON output.
-            """;
-
-        console.Output.WriteLine(infoText);
         return default;
+    }
+
+    /// <summary>
+    /// Opens the specified URL in the system default browser or URL handler.
+    /// </summary>
+    /// <param name="url">The URL to open.</param>
+    private static void OpenUrl(string url)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            Process.Start("xdg-open", url);
+            return;
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            Process.Start("open", url);
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = url,
+            UseShellExecute = true
+        });
     }
 }

@@ -11,7 +11,7 @@ namespace aaPatch.Commands;
 /// Command-line tool for patching Galaxy dump CSV files by modifying object attributes based on filters and patch operations.
 /// Supports filtering objects by template and tag name and applying attribute modifications through direct assignment or find-replace operations.
 /// </summary>
-[Command(Description = "Patches Galaxy CSV exports by modifying object attributes based provided criteria.")]
+[Command(Description = CommandDescriptions.PatchCommand)]
 public partial class PatchCommand : ICommand
 {
     /// <summary>
@@ -19,34 +19,32 @@ public partial class PatchCommand : ICommand
     /// </summary>
     private static readonly ObjectProjection[] Identity = ["Template", "TagName"];
 
-    private const string AdditionInfoMessage = "Use command 'aaPatch info' for format rules.";
-
     /// <summary>
     /// Gets or sets the path to the input file containing Galaxy dump CSV.
     /// If not specified, input is read from standard input (stdin).
     /// </summary>
-    [CommandOption("input", 'i', Description = "Path to the input file. If not specified, reads from stdin.")]
+    [CommandOption("input", 'i', Description = CommandDescriptions.InputFile)]
     public string? InputFile { get; set; }
 
     /// <summary>
     /// Gets or sets the path to the output file where patched Galaxy dump data will be written.
     /// If not specified, the output is written to standard output (stdout).
     /// </summary>
-    [CommandOption("output", 'o', Description = "Path to the output file. If not specified, writes to stdout.")]
+    [CommandOption("output", 'o', Description = CommandDescriptions.OutputFile)]
     public string? OutputFile { get; set; }
 
     /// <summary>
     /// Gets the filter pattern used to select which objects are included in the output.
     /// Supports wildcard patterns. If not specified, all objects are matched.
     /// </summary>
-    [CommandOption("where", 'w', Description = $"Filter objects having specified values. {AdditionInfoMessage}")]
+    [CommandOption("where", 'w', Description = CommandDescriptions.Where)]
     public ObjectExpression? Filter { get; set; }
 
     /// <summary>
     /// Gets the collection of patches to apply to matching objects.
     /// Supports two formats: 'Attribute=Value' for direct assignment, or 'Attribute:Find=Replace' for find-replace operations.
     /// </summary>
-    [CommandOption("patch", 'p', Description = $"Patch expression to apply. {AdditionInfoMessage}")]
+    [CommandOption("patch", 'p', Description = CommandDescriptions.Patch)]
     public IReadOnlyList<ObjectPatch> Patches { get; set; } = [];
 
     /// <summary>
@@ -54,22 +52,20 @@ public partial class PatchCommand : ICommand
     /// When specified, only the selected attributes will be included in the output objects.
     /// If not specified, all attributes are included.
     /// </summary>
-    [CommandOption("select", 's', Description = $"Attributes to include in output objects. {AdditionInfoMessage}")]
+    [CommandOption("select", 's', Description = CommandDescriptions.Select)]
     public IReadOnlyList<ObjectProjection> Selections { get; set; } = [];
 
     /// <summary>
-    /// 
+    /// Gets or sets the attributes used to collapse duplicate objects, or collapses duplicates across all attributes when no specific attributes are provided.
     /// </summary>
-    [CommandOption("distinct", 'd',
-        Description =
-            "Collapse duplicate objects in output across all attributes, or by specific attributes if provided.")]
+    [CommandOption("distinct", 'd', Description = CommandDescriptions.Distinct)]
     public IReadOnlyList<string>? Distinct { get; set; }
 
     /// <summary>
     /// Gets or sets a collection of attribute-based filters applied to objects in the Galaxy CSV.
     /// Filters specify criteria for selecting objects that contain specific attributes.
     /// </summary>
-    [CommandOption("has", 'c', Description = $"Filter objects containing specific attributes. {AdditionInfoMessage}")]
+    [CommandOption("has", 'c', Description = CommandDescriptions.Has)]
     public IReadOnlyList<string> Attributes { get; set; } = [];
 
     /// <summary>
@@ -77,14 +73,14 @@ public partial class PatchCommand : ICommand
     /// Supported options are "aveva" for AVEVA format and "json" for JSON format.
     /// Defaults to "aveva" if not specified.
     /// </summary>
-    [CommandOption("format", 'f', Description = "Output format")]
+    [CommandOption("format", 'f', Description = CommandDescriptions.Format)]
     public Format Format { get; set; } = Format.Aveva;
 
     /// <summary>
     /// Indicates whether patched objects should be pruned to only changed attributes and object instanced after all
     /// patches have been applied. If selections are provided, then this flag is ignored.
     /// </summary>
-    [CommandOption("prune", 'u', Description = "Only include changed attributes and modified objects in the output.")]
+    [CommandOption("prune", 'u', Description = CommandDescriptions.Prune)]
     public bool Prune { get; set; }
 
 
